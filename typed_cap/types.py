@@ -1,5 +1,17 @@
 from typing import Literal
 
+
+SUPPORT_TYPES = Literal[
+    "str",
+    "bool",
+    "int",
+    "float",
+    "list",
+    "list[str]",
+    "list[int]",
+    "list[float]",
+]
+
 ValidChar = Literal[
     "a",
     "b",
@@ -27,15 +39,30 @@ ValidChar = Literal[
     "x",
     "y",
     "z",
-]
-
-SUPPORT_TYPES = Literal[
-    "str",
-    "bool",
-    "int",
-    "float",
-    "list",
-    "list[str]",
-    "list[int]",
-    "list[float]",
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "J",
+    "K",
+    "L",
+    "M",
+    "N",
+    "O",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y",
+    "Z",
 ]
