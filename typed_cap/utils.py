@@ -1,28 +1,69 @@
 import regex as re
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, TypedDict, Union
 
 
-def argparser(args: List[str]) -> Dict[str, List[str]]:
-    args_dict: Dict[str, List[str]] = {"_": []}
+class ParsedArgs(TypedDict):
+    args: List[str]
+    options: Dict[str, Union[str, bool]]
+
+
+def args_parser(argv: List[str], flags: List[str]) -> ParsedArgs:
+    parsed: Dict = {"_": []}
     key: str = "_"
-    for arg in args:
-        reg = re.compile(
-            r"^(?P<prefix>[-]{1,2})(?P<key>[^-|=]+)=?(?P<val>[^$]{0,})"
-        )
-        res = reg.match(arg)
-        grp = {}
-        if res != None:
-            for gi in ["prefix", "key", "val"]:
-                grp[str(gi)] = res.group(gi)
-        if res != None:
-            key = res.group("key") if res.group("key") != None else key
-            if args_dict.get(key) == None:
-                args_dict[key] = []
-            if res.group("val"):
-                args_dict[key].append(res.group("val"))
+    reg = re.compile(
+        r"((-(?P<flags>[\w]{2,}))|(-(?P<alias>[\w]{1}))|(-{1,2}(?P<option>[a-zA-Z|-|_]+)))(=(?P<val>[^$|^\n]+))?"
+    )
+    for arg in argv:
+        m = reg.match(arg)
+        if m == None:
+            parsed[key].append(arg)
+            key = "_"  # reset key to "_"
         else:
-            args_dict[key].append(arg)
-    return args_dict
+            opts: Optional[str]
+            # flags
+            opts = m.group("flags")
+            if opts != None:
+                for f in opts:
+                    if f not in flags:
+                        raise Exception(f"{f} is NOT FLAG!")
+                    parsed[f] = [True]
+                    continue
+            # options (and alias
+            opts = m.group("alias")
+            if opts != None:
+                key = opts
+            opts = m.group("option")
+            if opts != None:
+                key = opts
+            val = m.group("val")
+            if key not in flags:
+                if val != None:
+                    parsed[key] = [val]
+                    key = "_"
+                else:
+                    parsed[key] = []
+            else:
+                if val != None:
+                    raise Exception(f"flag {f} should not catch values")
+                if key[:5] == "--no-":
+                    parsed[key] = [False]
+                else:
+                    parsed[key] = [True]
+
+    def _extract(k: str, v: List[Union[str, bool]]) -> Union[str, bool]:
+        if not isinstance(v, list):
+            raise Exception(f"val of {k} is not a list")
+        if len(v) != 1:
+            raise Exception(f"internal issue: unexpected length of {k}")
+        return v[0]
+
+    parsed_args: ParsedArgs = {
+        "args": parsed.pop("_"),
+        "options": dict(
+            map(lambda it: (it[0], _extract(it[0], it[1])), parsed.items())
+        ),
+    }
+    return parsed_args
 
 
 def remove_comments(code: Union[str, List[str]]) -> List[str]:
