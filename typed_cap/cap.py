@@ -2,7 +2,7 @@ import re
 import sys
 from inspect import getsource
 from typed_cap import utils
-from typed_cap.types import SUPPORT_TYPES, ValidChar
+from typed_cap.constants import SUPPORT_TYPES, ValidChar
 from typing import (
     Any,
     Dict,
@@ -90,7 +90,7 @@ class Cap(Generic[K, T, U]):
             self._args[arg] = {**self._args[arg], **opt}  # type: ignore[misc]
 
     def parse(self, args: List[str] = sys.argv[1:]) -> T:  # type: ignore
-        out = utils.argparser(args)
+        out = utils.args_parser(args, [])
         for k, v in out.items():
             # TODO:
             pass
