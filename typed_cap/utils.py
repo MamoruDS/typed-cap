@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, TypedDict, Union
 
 class ParsedArgs(TypedDict):
     args: List[str]
-    options: Dict[str, Union[str, bool]]
+    options: Dict[str, List[Union[str, bool]]]
 
 
 def args_parser(argv: List[str], flags: List[str]) -> ParsedArgs:
@@ -13,22 +13,26 @@ def args_parser(argv: List[str], flags: List[str]) -> ParsedArgs:
     reg = re.compile(
         r"((-(?P<flags>[\w]{2,}))|(-(?P<alias>[\w]{1}))|(-{1,2}(?P<option>[a-zA-Z|-|_]+)))(=(?P<val>[^$|^\n]+))?"
     )
+
+    def safe_append(key: str, t: Union[str, bool]):
+        if parsed.get(key) == None:
+            parsed[key] = []
+        parsed[key].append(t)
+
     for arg in argv:
         m = reg.match(arg)
         if m == None:
-            parsed[key].append(arg)
+            safe_append(key, arg)
             key = "_"  # reset key to "_"
         else:
             opts: Optional[str]
-            # flags
             opts = m.group("flags")
             if opts != None:
                 for f in opts:
                     if f not in flags:
                         raise Exception(f"{f} is NOT FLAG!")
-                    parsed[f] = [True]
+                    safe_append(f, True)
                     continue
-            # options (and alias
             opts = m.group("alias")
             if opts != None:
                 key = opts
@@ -38,24 +42,21 @@ def args_parser(argv: List[str], flags: List[str]) -> ParsedArgs:
             val = m.group("val")
             if key not in flags:
                 if val != None:
-                    parsed[key] = [val]
+                    safe_append(key, val)
                     key = "_"
-                else:
-                    parsed[key] = []
             else:
                 if val != None:
                     raise Exception(f"flag {f} should not catch values")
-                if key[:5] == "--no-":
-                    parsed[key] = [False]
+                if key[:5] == "--no-":  # default enabled?
+                    safe_append(key, False)
                 else:
-                    parsed[key] = [True]
+                    safe_append(key, True)
+                key = "_"
 
-    def _extract(k: str, v: List[Union[str, bool]]) -> Union[str, bool]:
+    def _extract(k: str, v: List[Union[str, bool]]) -> List[Union[str, bool]]:
         if not isinstance(v, list):
             raise Exception(f"val of {k} is not a list")
-        if len(v) != 1:
-            raise Exception(f"internal issue: unexpected length of {k}")
-        return v[0]
+        return v
 
     parsed_args: ParsedArgs = {
         "args": parsed.pop("_"),
