@@ -36,6 +36,42 @@ class _ArgOpt(TypedDict):
     optional: bool
 
 
+class _ParsedVal(TypedDict):
+    val: List[Any]
+    is_list: bool
+
+
+class Parsed(Generic[T]):
+    _val: T
+    _args: List[str]
+    _parsed_map: Dict[str, _ParsedVal]
+
+    def __init__(
+        self, args: List[str], parsed_map: Dict[str, _ParsedVal]
+    ) -> None:
+        self._args = args
+        self._parsed_map = parsed_map
+
+    @property
+    def arguments(self) -> List[str]:
+        return self._args
+
+    @property
+    def args(self) -> List[str]:
+        return self.arguments
+
+    @property
+    def value(self) -> T:
+        return self._val
+
+    @property
+    def val(self) -> T:
+        return self.value
+
+    def count(self, name: str) -> int:
+        return 0
+
+
 class Cap(Generic[K, T, U]):
     _argstype: Type[T]
     _args: Dict[str, _ArgOpt]
@@ -90,7 +126,7 @@ class Cap(Generic[K, T, U]):
         for arg, opt in helpers.items():
             self._args[arg] = {**self._args[arg], **opt}  # type: ignore[misc]
 
-    def parse(self, args: List[str] = sys.argv[1:]) -> T:
+    def parse(self, args: List[str] = sys.argv[1:]) -> Parsed[T]:
         def find_key(name: str) -> str:
             for key, opt in self._args.items():
                 if key == name:
@@ -118,14 +154,11 @@ class Cap(Generic[K, T, U]):
 
         out = utils.args_parser(args, flags)
 
+        parsed_map: Dict[str, _ParsedVal] = {}
         for key, val in out["options"].items():
             opt = self._args[find_key(key)]
             is_list, t = extract_list_type(opt["type"])
-            _val: List[Any]
-            if is_list:
-                _val = val
-            else:
-                _val = val[:1]
+            _val: List[Any] = val
             for i, v in enumerate(val):
                 if t == "str":
                     _val[i] = v
@@ -135,17 +168,6 @@ class Cap(Generic[K, T, U]):
                     _val[i] = float(v)
                 if t == "bool":
                     _val[i] = bool(v)
-            if is_list:
-                self._args[find_key(key)]["val"] = val
-            else:
-                self._args[find_key(key)]["val"] = val[0]
+            parsed_map[find_key(key)] = {"val": _val, "is_list": is_list}
 
-        res: Dict[str, Any] = {"_": out["args"]}
-        for key, opt in self._args.items():
-            if key == "_":
-                continue
-            res[key] = opt["val"]
-            if res[key] == None and not opt["optional"]:
-                # TODO:
-                raise Exception(f"missing option: {key}")
-        return res  # type: ignore
+        return Parsed(out["args"], parsed_map)
