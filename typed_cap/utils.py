@@ -1,5 +1,5 @@
 import regex as re
-from typing import Dict, List, Optional, TypedDict, Union
+from typing import Any, Dict, List, Optional, TypedDict, Union
 
 
 class ParsedArgs(TypedDict):
@@ -65,6 +65,13 @@ def args_parser(argv: List[str], flags: List[str]) -> ParsedArgs:
         ),
     }
     return parsed_args
+
+
+def flatten(a: List[List[Any]]) -> List[Any]:
+    f = []
+    for c in a:
+        f = [*f, *c]
+    return f
 
 
 def remove_comments(code: Union[str, List[str]]) -> List[str]:
