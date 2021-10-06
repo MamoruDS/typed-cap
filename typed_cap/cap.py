@@ -186,14 +186,19 @@ class Cap(Generic[K, T, U]):
                 return False, t
 
         flags = []
+        options = []
         for key, opt in self._args.items():
             if opt["type"] == "bool":
                 flags.append(key)
                 if opt["alias"] != None:
                     flags.append(opt["alias"])
+            else:
+                options.append(key)
+                if opt["alias"] != None:
+                    options.append(opt["alias"])
 
         try:
-            out = utils.args_parser(args, flags)
+            out = utils.args_parser(args, flags, options)
         except ArgsParserKeyError as key_error:
             utils.panic("Cap.parse: " + f"unknown option '{key_error.key}'")
 

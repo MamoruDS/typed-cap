@@ -1,5 +1,10 @@
 import regex as re
 from sys import stderr
+from typed_cap.types import (
+    ArgsParserKeyError,
+    ArgsParserMissingValue,
+    ArgsParserUnexpectedValue,
+)
 from typing import Any, Dict, List, NoReturn, Optional, TypedDict, Union
 
 
@@ -8,51 +13,95 @@ class ParsedArgs(TypedDict):
     options: Dict[str, List[Union[str, bool]]]
 
 
-def args_parser(argv: List[str], flags: List[str]) -> ParsedArgs:
+def args_parser(
+    argv: List[str],
+    flags: List[str],
+    options: List[str],
+    ignore_unknown: bool = False,
+    ignore_unknown_flags: bool = False,
+    ignore_unknown_options: bool = False,
+) -> ParsedArgs:
+    argv = [a for a in argv]
     parsed: Dict = {"_": []}
-    key: str = "_"
+    key: str
     reg = re.compile(
         r"((-(?P<flags>[\w]{2,}))|(-(?P<alias>[\w]{1}))|(-{1,2}(?P<option>[a-zA-Z|-|_]+)))(=(?P<val>[^$|^\n]+))?"
     )
 
-    def safe_append(key: str, t: Union[str, bool]):
-        if parsed.get(key) == None:
-            parsed[key] = []
-        parsed[key].append(t)
+    def raise_unknown_flag(key: str) -> Union[NoReturn, None]:
+        if not ignore_unknown and not ignore_unknown_flags:
+            raise ArgsParserKeyError(key, "flag")
 
-    for arg in argv:
-        m = reg.match(arg)
-        if m == None:
-            safe_append(key, arg)
-            key = "_"  # reset key to "_"
+    def raise_unknown_option(key: str) -> Union[NoReturn, None]:
+        if not ignore_unknown and not ignore_unknown_options:
+            raise ArgsParserKeyError(key, "option")
+
+    def is_next_a_value() -> bool:
+        if len(argv) == 0:
+            return False
         else:
-            opts: Optional[str]
-            opts = m.group("flags")
-            if opts != None:
-                for f in opts:
+            return reg.match(argv[0]) == None
+
+    def safe_append(k: str, t: Union[str, bool]):
+        if parsed.get(k) == None:
+            parsed[k] = []
+        parsed[k].append(t)
+
+    while len(argv):
+        arg = argv.pop(0)
+        m = reg.match(arg)
+        if m != None:
+            opt: Optional[str]
+            opt = m.group("flags")
+            if opt != None:
+                for f in opt:
                     if f not in flags:
-                        raise Exception(f"{f} is NOT FLAG!")
-                    safe_append(f, True)
-                    continue
-            opts = m.group("alias")
-            if opts != None:
-                key = opts
-            opts = m.group("option")
-            if opts != None:
-                key = opts
+                        raise_unknown_flag(f)
+                    else:
+                        safe_append(f, True)
+                continue
+            opt = m.group("alias")
+            key = "_"  # checking potential unbound
+            if opt != None:
+                key = opt
+            opt = m.group("option")
+            if opt != None:
+                key = opt
             val = m.group("val")
-            if key not in flags:
-                if val != None:
-                    safe_append(key, val)
-                    key = "_"
-            else:
-                if val != None:
-                    raise Exception(f"flag {f} should not catch values")
-                if key[:5] == "--no-":  # default enabled?
-                    safe_append(key, False)
+            if key == "_":
+                raise Exception('unknown unbound issue for "key"')
+            if val != None:
+                """
+                matched option with val (`-o=sth` or `--opt==sth`)
+                """
+                if key in flags:
+                    raise ArgsParserUnexpectedValue(key, val)
+                elif key not in options:
+                    raise_unknown_option(key)
                 else:
-                    safe_append(key, True)
-                key = "_"
+                    safe_append(key, val)
+            else:
+                """
+                matched option or flag depends on whether the next argument is a "val"
+                """
+                if is_next_a_value():
+                    if key in options:
+                        safe_append(key, argv.pop(0))
+                    else:
+                        raise_unknown_option(key)
+                else:
+                    val = True
+                    if key[:5] == "--no-":  # TODO:
+                        val = False
+                        key = key[5:]
+                    if key in options:
+                        raise ArgsParserMissingValue(key)
+                    elif key in flags:
+                        safe_append(key, val)
+                    else:
+                        raise_unknown_flag(key)
+        else:
+            safe_append("_", arg)
 
     def _extract(k: str, v: List[Union[str, bool]]) -> List[Union[str, bool]]:
         if not isinstance(v, list):
