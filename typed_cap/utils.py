@@ -1,5 +1,6 @@
 import regex as re
-from typing import Any, Dict, List, Optional, TypedDict, Union
+from sys import stderr
+from typing import Any, Dict, List, NoReturn, Optional, TypedDict, Union
 
 
 class ParsedArgs(TypedDict):
@@ -72,6 +73,11 @@ def flatten(a: List[List[Any]]) -> List[Any]:
     for c in a:
         f = [*f, *c]
     return f
+
+
+def panic(msg: str, exit_code: int = 1) -> NoReturn:
+    stderr.write(msg + "\n")
+    exit(exit_code)
 
 
 def remove_comments(code: Union[str, List[str]]) -> List[str]:

@@ -1,4 +1,3 @@
-from typed_cap.utils import panic
 from typing import Any, Callable, Dict, List, TypedDict
 
 
