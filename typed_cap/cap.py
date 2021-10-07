@@ -110,7 +110,7 @@ class Parsed(Generic[T]):
 class Cap(Generic[K, T, U]):
     _argstype: Type[T]
     _args: Dict[str, _ArgOpt]
-    _delimiter: str = ","
+    _delimiter: Optional[str] = ","
     _parser_register: ParserRegister
 
     def __init__(
@@ -120,6 +120,26 @@ class Cap(Generic[K, T, U]):
         self._argstype = argstype
         self._parser_register = PRESET_PARSERS
         self._parse_argstype()
+
+    def _get_key(
+        self, name: str
+    ) -> Union[NoReturn, str,]:
+        for key, opt in self._args.items():
+            if key == name:
+                return key
+            if opt["alias"] == name:
+                return key
+        panic(f"key '{name}' not found")
+
+    def _extract_list_type(self, t: str) -> Tuple[bool, str]:
+        if t == "list":
+            return True, "str"
+        reg = re.compile(r"^(list\[(?P<type>\w+)\])$")
+        m = reg.match(t)
+        if m != None:
+            return True, m.group("type")
+        else:
+            return False, t
 
     def _parse_argstype(self):
         types = remove_comments(getsource(self._argstype))[1:]
@@ -143,9 +163,6 @@ class Cap(Generic[K, T, U]):
             if m != None:
                 opt = True
                 t = m.group("type")
-            # TODO: SUPPORT_TYPES should be removed
-            if t not in get_args(SUPPORT_TYPES):
-                raise Exception(f'"{t}" is not supported')  # TODO:
             self._args[key] = {
                 "val": None,
                 "type": t,
@@ -154,17 +171,7 @@ class Cap(Generic[K, T, U]):
                 "optional": opt,
             }
 
-    def _get_key(
-        self, name: str
-    ) -> Union[NoReturn, str,]:
-        for key, opt in self._args.items():
-            if key == name:
-                return key
-            if opt["alias"] == name:
-                return key
-        panic(f"key '{name}' not found")
-
-    def set_delimiter(self, delimiter: str):
+    def set_delimiter(self, delimiter: Optional[str]):
         self._delimiter = delimiter
 
     def set_parser(self, type_name: str, parser: Parser, allow_list: bool):
@@ -190,15 +197,6 @@ class Cap(Generic[K, T, U]):
         ignore_unknown_flags: bool = False,
         ignore_unknown_options: bool = False,
     ) -> Parsed[T]:
-        def extract_list_type(t: str) -> Tuple[bool, str]:
-            if t == "list":
-                return True, "str"
-            reg = re.compile(r"^(list\[(?P<type>\w+)\])$")
-            m = reg.match(t)
-            if m != None:
-                return True, m.group("type")
-            else:
-                return False, t
 
         flags = []
         options = []
@@ -242,7 +240,7 @@ class Cap(Generic[K, T, U]):
         parsed_map: Dict[str, _ParsedVal] = {}
         for key, val in out["options"].items():
             opt = self._args[self._get_key(key)]
-            is_list, t = extract_list_type(opt["type"])
+            is_list, t = self._extract_list_type(opt["type"])
             _val: List[List[Any]] = []
             for v in val:
                 if isinstance(v, bool):
@@ -270,7 +268,7 @@ class Cap(Generic[K, T, U]):
         # assign default value to empty field
         for key, opt in self._args.items():
             if parsed_map.get(key) == None:
-                is_list, t = extract_list_type(opt["type"])
+                is_list, t = self._extract_list_type(opt["type"])
                 if opt["val"] == None and not opt["optional"]:
                     panic(
                         "Cap.parse: "
