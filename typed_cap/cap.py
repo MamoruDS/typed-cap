@@ -2,15 +2,26 @@ import json
 import re
 import sys
 from inspect import getsource
-from typed_cap import utils
 from typed_cap.constants import SUPPORT_TYPES, ValidChar
 from typed_cap.parser import Parser, ParserRegister, PRESET as PRESET_PARSERS
-from typed_cap.types import ArgsParserKeyError
+from typed_cap.types import (
+    ArgsParserKeyError,
+    ArgsParserMissingValue,
+    ArgsParserUnexpectedValue,
+)
+from typed_cap.utils import (
+    args_parser,
+    flatten,
+    panic,
+    remove_comments,
+    to_yellow as color_yl,
+)
 from typing import (
     Any,
     Dict,
     Generic,
     List,
+    NoReturn,
     Optional,
     Tuple,
     Type,
@@ -68,7 +79,7 @@ class Parsed(Generic[T]):
         val = {}
         for key, parsed in self._parsed_map.items():
             pv = parsed["val"]
-            pv = utils.flatten(pv)
+            pv = flatten(pv)
             if len(pv) == 0:
                 val[key] = parsed["default_val"]
             else:
@@ -84,7 +95,7 @@ class Parsed(Generic[T]):
         if parsed != None:
             return len(parsed["val"])
         else:
-            utils.panic(f'Parsed.count: cannot find option with name "{name}"')
+            panic(f'Parsed.count: cannot find option with name "{name}"')
 
     def __json__(self, indent: Optional[int]) -> str:
         j = {}
@@ -111,7 +122,7 @@ class Cap(Generic[K, T, U]):
         self._parse_argstype()
 
     def _parse_argstype(self):
-        types = utils.remove_comments(getsource(self._argstype))[1:]
+        types = remove_comments(getsource(self._argstype))[1:]
         self._args = {}
         reg = re.compile(r"^(optional)\[(?P<type>.+)\]$")
         for t in types:
@@ -143,6 +154,16 @@ class Cap(Generic[K, T, U]):
                 "optional": opt,
             }
 
+    def _get_key(
+        self, name: str
+    ) -> Union[NoReturn, str,]:
+        for key, opt in self._args.items():
+            if key == name:
+                return key
+            if opt["alias"] == name:
+                return key
+        panic(f"key '{name}' not found")
+
     def set_delimiter(self, delimiter: str):
         self._delimiter = delimiter
 
@@ -166,15 +187,9 @@ class Cap(Generic[K, T, U]):
         self,
         args: List[str] = sys.argv[1:],
         ignore_unknown: bool = False,
+        ignore_unknown_flags: bool = False,
+        ignore_unknown_options: bool = False,
     ) -> Parsed[T]:
-        def find_key(name: str) -> str:
-            for key, opt in self._args.items():
-                if key == name:
-                    return key
-                if opt["alias"] == name:
-                    return key
-            raise Exception  # TODO:
-
         def extract_list_type(t: str) -> Tuple[bool, str]:
             if t == "list":
                 return True, "str"
@@ -198,13 +213,35 @@ class Cap(Generic[K, T, U]):
                     options.append(opt["alias"])
 
         try:
-            out = utils.args_parser(args, flags, options)
-        except ArgsParserKeyError as key_error:
-            utils.panic("Cap.parse: " + f"unknown option '{key_error.key}'")
+            out = args_parser(
+                args,
+                flags,
+                options,
+                ignore_unknown=ignore_unknown,
+                ignore_unknown_flags=ignore_unknown_flags,
+                ignore_unknown_options=ignore_unknown_options,
+            )
+        except ArgsParserKeyError as err:
+            panic("Cap.parse: " + f"unknown {err.key_type} '{err.key}'")
+        except ArgsParserUnexpectedValue as err:
+            key = self._get_key(err.key)
+            # prefix = '-' if is_alias else '--'
+            prefix = "--"
+            panic(
+                "Cap.parse: "
+                + f"the value for argument '{color_yl(prefix + key)}' wasn't expected"
+            )
+        except ArgsParserMissingValue as err:
+            key = self._get_key(err.key)
+            prefix = "--"
+            panic(
+                "Cap.parse: "
+                + f"the argument '{color_yl(prefix+key)}' requires a value, but none was supplied"
+            )
 
         parsed_map: Dict[str, _ParsedVal] = {}
         for key, val in out["options"].items():
-            opt = self._args[find_key(key)]
+            opt = self._args[self._get_key(key)]
             is_list, t = extract_list_type(opt["type"])
             _val: List[List[Any]] = []
             for v in val:
@@ -213,7 +250,7 @@ class Cap(Generic[K, T, U]):
                     continue
                 parser_inf = self._parser_register.get(t)
                 if parser_inf == None:
-                    utils.panic(
+                    panic(
                         "Cap.parse: "
                         + f"cannot handle type {t} because it has not been registered yet"
                     )
@@ -225,7 +262,7 @@ class Cap(Generic[K, T, U]):
                             self._delimiter,
                         )
                     )
-            parsed_map[find_key(key)] = {
+            parsed_map[self._get_key(key)] = {
                 "val": _val,
                 "is_list": is_list,
                 "default_val": None,
@@ -235,7 +272,7 @@ class Cap(Generic[K, T, U]):
             if parsed_map.get(key) == None:
                 is_list, t = extract_list_type(opt["type"])
                 if opt["val"] == None and not opt["optional"]:
-                    utils.panic(
+                    panic(
                         "Cap.parse: "
                         + f'option "{key}":{opt["type"]} is required but it is missing'
                     )

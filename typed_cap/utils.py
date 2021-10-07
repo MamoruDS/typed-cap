@@ -29,11 +29,11 @@ def args_parser(
     )
 
     def raise_unknown_flag(key: str) -> Union[NoReturn, None]:
-        if not ignore_unknown and not ignore_unknown_flags:
+        if not (ignore_unknown or ignore_unknown_flags):
             raise ArgsParserKeyError(key, "flag")
 
     def raise_unknown_option(key: str) -> Union[NoReturn, None]:
-        if not ignore_unknown and not ignore_unknown_options:
+        if not (ignore_unknown or ignore_unknown_options):
             raise ArgsParserKeyError(key, "option")
 
     def is_next_a_value() -> bool:
@@ -115,6 +115,10 @@ def args_parser(
         ),
     }
     return parsed_args
+
+
+def to_yellow(text) -> str:
+    return f"\x1b[33m{text}\x1b[0m"
 
 
 def flatten(a: List[List[Any]]) -> List[Any]:
