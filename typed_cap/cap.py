@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 import re
 import sys
@@ -42,7 +43,7 @@ class ArgOpt(TypedDict, total=False):
     alias: ValidChar
 
 
-ArgCallback = Callable[[List], None]
+ArgCallback = Callable[["Cap", List], None]
 
 
 class _ArgOpt(TypedDict):
@@ -225,46 +226,54 @@ class Cap(Generic[K, T, U]):
         callback: Optional[ArgCallback] = None,
         callback_priority: int = 1,
         prevent_overwrite: bool = False,
-    ):
+    ) -> Cap:
         if self._args.get(key) != None and prevent_overwrite:
-            return
-        t: str
-        if isinstance(type, str):
-            t = type
+            return self
         else:
-            if type == str:
-                t = "str"
-            elif type == int:
-                t = "int"
-            elif type == float:
-                t = "float"
-            elif type == bool:
-                t = "bool"
+            t: str
+            if isinstance(type, str):
+                t = type
             else:
-                raise Unhandled(
-                    desc="cannot convert given type to string",
-                    loc="Cap.add_argument",
-                )
-        self._args[key] = {
-            "val": default,
-            "type": t,
-            "about": about,
-            "alias": alias,
-            "optional": optional,
-            "cb": callback,
-            "cb_idx": callback_priority,
-            "hide": True,
-        }
+                if type == str:
+                    t = "str"
+                elif type == int:
+                    t = "int"
+                elif type == float:
+                    t = "float"
+                elif type == bool:
+                    t = "bool"
+                else:
+                    raise Unhandled(
+                        desc="cannot convert given type to string",
+                        loc="Cap.add_argument",
+                    )
+            self._args[key] = {
+                "val": default,
+                "type": t,
+                "about": about,
+                "alias": alias,
+                "optional": optional,
+                "cb": callback,
+                "cb_idx": callback_priority,
+                "hide": True,
+            }
+            return self
 
-    def set_delimiter(self, delimiter: Optional[str]):
+    def set_delimiter(self, delimiter: Optional[str]) -> Cap:
         self._delimiter = delimiter
+        return self
 
-    def set_parser(self, type_name: str, parser: Parser, allow_list: bool):
+    def set_parser(
+        self, type_name: str, parser: Parser, allow_list: bool
+    ) -> Cap:
         self._parser_register.__setitem__(
             type_name, {"parser": parser, "allow_list": allow_list}
         )
+        return self
 
-    def set_callback(self, key: str, callback: ArgCallback, priority: int = 1):
+    def set_callback(
+        self, key: str, callback: ArgCallback, priority: int = 1
+    ) -> Cap:
         if self._args.get(key) != None:
             self._args[key]["cb"] = callback
             self._args[key]["cb_idx"] = priority
@@ -272,47 +281,36 @@ class Cap(Generic[K, T, U]):
             raise KeyError(
                 f"'{key}' haven't been defined as an argument in Cap"
             )
+        return self
 
-    def raw_exception(self, tog: bool):
+    def raw_exception(self, tog: bool) -> Cap:
         self._raw_err = tog
+        return self
 
-    def name(self, text: str):
+    def name(self, text: str) -> Cap:
         self._name = text
+        return self
 
-    def about(self, text: str):
+    def about(self, text: str, helper: bool = True) -> Cap:
         self._about = text
+        return self
 
-    def version(self, text: str):
+    def version(self, text: str, helper: bool = True) -> Cap:
         self._version = text
+        return self
 
-        def cb(v: List[bool]):
-            if self._name != None:
-                print(f"{self._name} {self._version}")
-            else:
-                print(self._version)
-            exit(0)
-
-        self.add_argument(
-            "version",
-            type="bool",
-            about="print version info and exit",
-            alias="V",
-            optional=True,
-            callback=cb,
-            callback_priority=2,
-            prevent_overwrite=True,
-        )
-
-    def default(self, value: U):
+    def default(self, value: U) -> Cap:
         return self.default_strict(value)  # type: ignore[arg-type]
 
-    def default_strict(self, value: T):
+    def default_strict(self, value: T) -> Cap:
         for arg, val in value.items():
             self._args[arg]["val"] = val
+        return self
 
-    def helper(self, helpers: Dict[K, ArgOpt]):
+    def helper(self, helpers: Dict[K, ArgOpt]) -> Cap:
         for arg, opt in helpers.items():
             self._args[arg] = {**self._args[arg], **opt}  # type: ignore[misc]
+        return self
 
     def parse(
         self,
@@ -412,7 +410,7 @@ class Cap(Generic[K, T, U]):
                         arg = self._args[key]
                         cb = arg["cb"]
                         if cb != None:
-                            cb(parsed["val"])
+                            cb(self, parsed["val"])
                     except KeyError:
                         continue
 
