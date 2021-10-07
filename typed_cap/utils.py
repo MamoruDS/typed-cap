@@ -5,7 +5,16 @@ from typed_cap.types import (
     ArgsParserMissingValue,
     ArgsParserUnexpectedValue,
 )
-from typing import Any, Dict, List, NoReturn, Optional, TypedDict, Union
+from typing import (
+    Any,
+    Dict,
+    List,
+    NoReturn,
+    Optional,
+    TypeVar,
+    TypedDict,
+    Union,
+)
 
 
 class ParsedArgs(TypedDict):
@@ -117,8 +126,24 @@ def args_parser(
     return parsed_args
 
 
+def _to_color(text, code: str) -> str:
+    return f"{code}{text}\x1b[0m"
+
+
+def to_red(text) -> str:
+    return _to_color(text, "\x1b[31m")
+
+
+def to_green(text) -> str:
+    return _to_color(text, "\x1b[32m")
+
+
 def to_yellow(text) -> str:
-    return f"\x1b[33m{text}\x1b[0m"
+    return _to_color(text, "\x1b[33m")
+
+
+def to_blue(text) -> str:
+    return _to_color(text, "\x1b[34m")
 
 
 def flatten(a: List[List[Any]]) -> List[Any]:
@@ -148,3 +173,13 @@ def remove_comments(code: Union[str, List[str]]) -> List[str]:
             continue
         res.append(l)
     return res
+
+
+D = TypeVar("D")
+
+
+def unwrap_or(d: Optional[D], alt: D) -> D:
+    if d == None:
+        return alt
+    else:
+        return d
