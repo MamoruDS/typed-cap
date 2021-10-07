@@ -16,13 +16,13 @@ class ArgsParserKeyError(Exception):
         super().__init__(f"unknown {self.key_type} '{self.key}'", *args)
 
 
-class ArgsParserUnexpectedValue(Exception):
+class ArgsParserMissingArgument(Exception):
     key: str
-    value: str
+    type_name: str
 
-    def __init__(self, key: str, value: str, *args: object) -> None:
+    def __init__(self, key: str, type_name: str, *args: object) -> None:
         self.key = key
-        self.value = value
+        self.type_name = type_name
         super().__init__(*args)
 
 
@@ -31,6 +31,24 @@ class ArgsParserMissingValue(Exception):
 
     def __init__(self, key: str, *args: object) -> None:
         self.key = key
+        super().__init__(*args)
+
+
+class ArgsParserUndefinedParser(Exception):
+    type_name: str
+
+    def __init__(self, type_name: str, *args: object) -> None:
+        self.type_name = type_name
+        super().__init__(*args)
+
+
+class ArgsParserUnexpectedValue(Exception):
+    key: str
+    value: str
+
+    def __init__(self, key: str, value: str, *args: object) -> None:
+        self.key = key
+        self.value = value
         super().__init__(*args)
 
 
