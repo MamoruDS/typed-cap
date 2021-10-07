@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 
 
 class ArgsParserKeyError(Exception):
@@ -32,3 +32,25 @@ class ArgsParserMissingValue(Exception):
     def __init__(self, key: str, *args: object) -> None:
         self.key = key
         super().__init__(*args)
+
+
+class Unhandled(Exception):
+    msg: str
+    desc: Optional[str]
+    loc: Optional[str]
+
+    def __init__(
+        self, desc: Optional[str] = None, loc: Optional[str] = None
+    ) -> None:
+        self.desc = desc
+        self.loc = loc
+        if loc == None:
+            loc = ""
+        else:
+            loc = f" in `{loc}`"
+        if desc == None:
+            desc = ""
+        else:
+            desc = "\n\t" + desc
+        self.msg = "Cap: unhandled error" + loc + desc
+        super().__init__(self.msg)
