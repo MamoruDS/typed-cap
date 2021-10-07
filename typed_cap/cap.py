@@ -1,6 +1,7 @@
 import json
 import re
 import sys
+import inspect
 from inspect import getsource
 from typed_cap.constants import SUPPORT_TYPES, ValidChar
 from typed_cap.parser import Parser, ParserRegister, PRESET as PRESET_PARSERS
@@ -8,16 +9,19 @@ from typed_cap.types import (
     ArgsParserKeyError,
     ArgsParserMissingValue,
     ArgsParserUnexpectedValue,
+    Unhandled,
 )
 from typed_cap.utils import (
     args_parser,
     flatten,
     panic,
     remove_comments,
-    to_yellow as color_yl,
+    to_yellow,
+    to_blue,
 )
 from typing import (
     Any,
+    Callable,
     Dict,
     Generic,
     List,
@@ -31,15 +35,14 @@ from typing import (
     get_args,
 )
 
-T = TypeVar("T", bound=TypedDict)
-U = TypeVar("U", bound=Union[TypedDict, Dict[str, Any]])
-K = TypeVar("K", bound=str)
-
 
 class ArgOpt(TypedDict, total=False):
     about: str
     alias: ValidChar
     # optional: bool
+
+
+ArgCallback = Callable[[List], None]
 
 
 class _ArgOpt(TypedDict):
@@ -48,12 +51,17 @@ class _ArgOpt(TypedDict):
     about: Optional[str]
     alias: Optional[ValidChar]
     optional: bool
+    cb: Optional[ArgCallback]
+    cb_idx: int
 
 
 class _ParsedVal(TypedDict):
-    val: List[Any]
+    val: List[List[Any]]
     default_val: Optional[Any]
     is_list: bool
+
+
+T = TypeVar("T", bound=TypedDict)
 
 
 class Parsed(Generic[T]):
@@ -107,11 +115,18 @@ class Parsed(Generic[T]):
         return self.__json__(indent=indent)
 
 
+U = TypeVar("U", bound=Union[TypedDict, Dict[str, Any]])
+K = TypeVar("K", bound=str)
+
+
 class Cap(Generic[K, T, U]):
     _argstype: Type[T]
     _args: Dict[str, _ArgOpt]
     _delimiter: Optional[str] = ","
     _parser_register: ParserRegister
+    _about: str = ""
+    _name: str = ""
+    _version: str = ""
 
     def __init__(
         self,
@@ -169,7 +184,50 @@ class Cap(Generic[K, T, U]):
                 "about": None,
                 "alias": None,
                 "optional": opt,
+                "cb": None,
+                "cb_idx": 0,
             }
+
+    def add_argument(
+        self,
+        key: str,
+        type: Union[str, Type[str], Type[int], Type[float], Type[bool]],
+        about: Optional[str] = None,
+        alias: Optional[ValidChar] = None,
+        optional: bool = False,
+        default: Optional[Any] = None,
+        callback: Optional[ArgCallback] = None,
+        callback_priority: int = 1,
+        prevent_overwrite: bool = False,
+    ):
+        if self._args.get(key) != None and prevent_overwrite:
+            return
+        t: str
+        if isinstance(type, str):
+            t = type
+        else:
+            if type == str:
+                t = "str"
+            elif type == int:
+                t = "int"
+            elif type == float:
+                t = "float"
+            elif type == bool:
+                t = "bool"
+            else:
+                raise Unhandled(
+                    desc="cannot convert given type to string",
+                    loc="Cap.add_argument",
+                )
+        self._args[key] = {
+            "val": default,
+            "type": t,
+            "about": about,
+            "alias": alias,
+            "optional": optional,
+            "cb": callback,
+            "cb_idx": callback_priority,
+        }
 
     def set_delimiter(self, delimiter: Optional[str]):
         self._delimiter = delimiter
@@ -177,6 +235,42 @@ class Cap(Generic[K, T, U]):
     def set_parser(self, type_name: str, parser: Parser, allow_list: bool):
         self._parser_register.__setitem__(
             type_name, {"parser": parser, "allow_list": allow_list}
+        )
+
+    def set_callback(self, key: str, callback: ArgCallback, priority: int = 1):
+        if self._args.get(key) != None:
+            self._args[key]["cb"] = callback
+            self._args[key]["cb_idx"] = priority
+        else:
+            raise KeyError(
+                f"'{key}' haven't been defined as an argument in Cap"
+            )
+
+    def name(self, text: str):
+        self._name = text
+
+    def about(self, text: str):
+        self._about = text
+
+    def version(self, text: str):
+        self._version = text
+
+        def cb(v: List[bool]):
+            if self._name:
+                print(f"{self._name} {self._version}")
+            else:
+                print(self._version)
+            exit(0)
+
+        self.add_argument(
+            "version",
+            type="bool",
+            about="print version info and exit",
+            alias="V",
+            optional=True,
+            callback=cb,
+            callback_priority=2,
+            prevent_overwrite=True,
         )
 
     def default(self, value: U):
@@ -227,14 +321,14 @@ class Cap(Generic[K, T, U]):
             prefix = "--"
             panic(
                 "Cap.parse: "
-                + f"the value for argument '{color_yl(prefix + key)}' wasn't expected"
+                + f"the value for argument '{to_yellow(prefix + key)}' wasn't expected"
             )
         except ArgsParserMissingValue as err:
             key = self._get_key(err.key)
             prefix = "--"
             panic(
                 "Cap.parse: "
-                + f"the argument '{color_yl(prefix+key)}' requires a value, but none was supplied"
+                + f"the argument '{to_yellow(prefix+key)}' requires a value, which was not supplied"
             )
 
         parsed_map: Dict[str, _ParsedVal] = {}
@@ -250,7 +344,7 @@ class Cap(Generic[K, T, U]):
                 if parser_inf == None:
                     panic(
                         "Cap.parse: "
-                        + f"cannot handle type {t} because it has not been registered yet"
+                        + f"cannot handle type {to_blue(t)} because it has not been registered yet"
                     )
                 else:
                     _val.append(
@@ -265,6 +359,31 @@ class Cap(Generic[K, T, U]):
                 "is_list": is_list,
                 "default_val": None,
             }
+
+        # callbacks
+        cb_list: List[Tuple[str, int]] = []
+        for key, opt in self._args.items():
+            if opt["cb"] != None:
+                cb_list.append((key, opt["cb_idx"]))
+        cb_list = sorted(cb_list, key=lambda x: x[1])
+        cb_list.reverse()
+        for key, _ in cb_list:
+            parsed = parsed_map.get(key)
+            if parsed == None:
+                raise Unhandled(
+                    desc="getting `None` from `parsed` by using key with valid `cb`",
+                    loc="Cap.parse",
+                )
+            else:
+                if len(parsed["val"]) >= 0:
+                    try:
+                        arg = self._args[key]
+                        cb = arg["cb"]
+                        if cb != None:
+                            cb(parsed["val"])
+                    except KeyError:
+                        continue
+
         # assign default value to empty field
         for key, opt in self._args.items():
             if parsed_map.get(key) == None:
@@ -272,13 +391,11 @@ class Cap(Generic[K, T, U]):
                 if opt["val"] == None and not opt["optional"]:
                     panic(
                         "Cap.parse: "
-                        + f'option "{key}":{opt["type"]} is required but it is missing'
+                        + f"option '{to_yellow(key)}':{to_blue(opt['type'])} is required but it is missing"
                     )
-                    pass
                 parsed_map[key] = {
                     "val": [],
                     "is_list": is_list,
                     "default_val": opt["val"],
                 }
-
         return Parsed(out["args"], parsed_map)
