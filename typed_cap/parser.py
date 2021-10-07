@@ -1,7 +1,7 @@
-from typing import Any, Callable, Dict, List, TypedDict
+from typing import Any, Callable, Dict, List, Optional, TypedDict
 
 
-Parser = Callable[[str, bool, str], List[Any]]
+Parser = Callable[[str, bool, Optional[str]], List[Any]]
 
 
 class ParserInfo(TypedDict):
@@ -12,15 +12,17 @@ class ParserInfo(TypedDict):
 ParserRegister = Dict[str, ParserInfo]
 
 
-def _preset_parser_str(text: str, is_list: bool, delimiter: str) -> List[str]:
-    if is_list:
+def _preset_parser_str(
+    text: str, is_list: bool, delimiter: Optional[str]
+) -> List[str]:
+    if is_list and delimiter != None:
         return text.split(delimiter)
     else:
         return [text]
 
 
 def _preset_parser_bool(
-    text: str, is_list: bool, delimiter: str
+    text: str, is_list: bool, delimiter: Optional[str]
 ) -> List[bool]:
     pre = _preset_parser_str(text, is_list, delimiter)
     val: List[bool] = []
@@ -32,7 +34,9 @@ def _preset_parser_bool(
     return val
 
 
-def _preset_parser_int(text: str, is_list: bool, delimiter: str) -> List[int]:
+def _preset_parser_int(
+    text: str, is_list: bool, delimiter: Optional[str]
+) -> List[int]:
     pre = _preset_parser_str(text, is_list, delimiter)
     val: List[int] = []
     for e in pre:
@@ -41,7 +45,7 @@ def _preset_parser_int(text: str, is_list: bool, delimiter: str) -> List[int]:
 
 
 def _preset_parser_float(
-    text: str, is_list: bool, delimiter: str
+    text: str, is_list: bool, delimiter: Optional[str]
 ) -> List[float]:
     pre = _preset_parser_str(text, is_list, delimiter)
     val: List[float] = []
