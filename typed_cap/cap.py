@@ -29,6 +29,7 @@ from typing import (
     Dict,
     Generic,
     List,
+    NamedTuple,
     NoReturn,
     Optional,
     Tuple,
@@ -153,19 +154,24 @@ def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
 
 def _helper_version_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
     if v[0][0]:
+        ver = unwrap_or(c._version, "unknown version")
         if c._name != None:
-            print(f"{c._name} {c._version}")
+            print(f"{c._name} {ver}")
         else:
-            print(c._version)
+            print(ver)
     exit(0)
 
 
-def helper_arg_help(cap: "Cap"):
+def helper_arg_help(
+    cap: "Cap",
+    name: str = "help",
+    alias: Optional[VALID_ALIAS_CANDIDATES] = "h",
+):
     cap.add_argument(
-        "help",
+        name,
         type="bool",
         about="display the help text",
-        alias="h",
+        alias=alias,
         optional=True,
         callback=_helper_help_cb,
         callback_priority=0,
@@ -173,12 +179,16 @@ def helper_arg_help(cap: "Cap"):
     )
 
 
-def helper_arg_version(cap: "Cap"):
+def helper_arg_version(
+    cap: "Cap",
+    name: str = "version",
+    alias: Optional[VALID_ALIAS_CANDIDATES] = "V",
+):
     cap.add_argument(
-        "version",
+        name,
         type="bool",
         about="print version info and exit",
-        alias="V",
+        alias=alias,
         optional=True,
         callback=_helper_version_cb,
         callback_priority=2,
@@ -187,13 +197,13 @@ def helper_arg_version(cap: "Cap"):
 
 
 class _Helpers(TypedDict):
-    helper_arg_help: Callable[["Cap"], None]
-    helper_arg_version: Callable[["Cap"], None]
+    arg_help: Callable[["Cap", str, Optional[VALID_ALIAS_CANDIDATES]], None]
+    arg_version: Callable[["Cap", str, Optional[VALID_ALIAS_CANDIDATES]], None]
 
 
 helpers: _Helpers = {
-    "helper_arg_help": helper_arg_help,
-    "helper_arg_version": helper_arg_version,
+    "arg_help": helper_arg_help,
+    "arg_version": helper_arg_version,
 }
 
 
