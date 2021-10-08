@@ -79,6 +79,11 @@ def args_parser(
             val = m.group("val")
             if key == "_":
                 raise Exception('unknown unbound issue for "key"')
+            if (key not in flags) and (key not in options):
+                # FIXME: bad implementation
+                _key = re.sub(r"\-", "_", key)
+                if (_key in flags) or (_key in options):
+                    key = _key
             if val != None:
                 """
                 matched option with val (`-o=sth` or `--opt==sth`)
@@ -94,7 +99,9 @@ def args_parser(
                 matched option or flag depends on whether the next argument is a "val"
                 """
                 if is_next_a_value():
-                    if key in options:
+                    if key in flags:
+                        safe_append(key, True)
+                    elif key in options:
                         safe_append(key, argv.pop(0))
                     else:
                         raise_unknown_option(key)
