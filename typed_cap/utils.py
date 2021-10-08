@@ -36,7 +36,7 @@ def args_parser(
     parsed: Dict = {"_": []}
     key: str
     reg = re.compile(
-        r"^((-(?P<flags>[\w]{2,}))|(-(?P<alias>[\w]{1}))|(-{1,2}(?P<option>[a-zA-Z|\-|_]+)))(=(?P<val>[^$|^\n]+))?"
+        r"^((-(?P<flags>[a-zA-Z0-9]{2,}))|(-(?P<alias>[a-zA-Z0-9]{1}))|(-{1,2}(?P<option>[a-zA-Z0-9|\-|_]+)))(=(?P<val>[^$|^\n]+))?"
     )
 
     def is_valid_key(k: str, flg: bool = False, opt: bool = False) -> bool:
