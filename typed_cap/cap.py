@@ -43,7 +43,7 @@ class ArgOpt(TypedDict, total=False):
     alias: ValidChar
 
 
-ArgCallback = Callable[["Cap", List], None]
+ArgCallback = Callable[["Cap", List[List]], Union[NoReturn, List[List]]]
 
 
 class _ArgOpt(TypedDict):
@@ -128,6 +128,77 @@ CAP_ERR = Union[
     ArgsParserUnexpectedValue,
     Unhandled,
 ]
+
+
+def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
+    lns: List[Tuple[int, str]] = []
+    indent_size = 4
+    if v[0][0]:
+        if c._about != None:
+            lns.append((0, c._about))
+            lns.append((0, ""))
+        lns.append((0, "OPTIONS:"))
+        arg_lns: List[Tuple[str, str]] = []
+        max_opt_len = 0
+        for key, opt in c._args.items():
+            alias = unwrap_or(opt["alias"], "   ")
+            if len(alias) == 1:
+                alias = f"-{alias},"
+            ln = f"{alias}--{key}"
+            arg_lns.append((ln, unwrap_or(opt["about"], "")))
+            max_opt_len = max(len(ln), max_opt_len)
+        for ln in arg_lns:
+            lns.append((1, ln[0].ljust(max_opt_len + 4) + ln[1]))
+
+        for indent, ln in lns:
+            print("".ljust(indent * indent_size) + ln)
+    exit(0)
+
+
+def _helper_version_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
+    if v[0][0]:
+        if c._name != None:
+            print(f"{c._name} {c._version}")
+        else:
+            print(c._version)
+    exit(0)
+
+
+def helper_arg_help(cap: "Cap"):
+    cap.add_argument(
+        "help",
+        type="bool",
+        about="display the help text",
+        alias="h",
+        optional=True,
+        callback=_helper_help_cb,
+        callback_priority=0,
+        prevent_overwrite=True,
+    )
+
+
+def helper_arg_version(cap: "Cap"):
+    cap.add_argument(
+        "version",
+        type="bool",
+        about="print version info and exit",
+        alias="V",
+        optional=True,
+        callback=_helper_version_cb,
+        callback_priority=2,
+        prevent_overwrite=True,
+    )
+
+
+class _Helpers(TypedDict):
+    helper_arg_help: Callable[["Cap"], None]
+    helper_arg_version: Callable[["Cap"], None]
+
+
+helpers: _Helpers = {
+    "helper_arg_help": helper_arg_help,
+    "helper_arg_version": helper_arg_version,
+}
 
 
 class Cap(Generic[K, T, U]):
@@ -293,10 +364,14 @@ class Cap(Generic[K, T, U]):
 
     def about(self, text: str, helper: bool = True) -> Cap:
         self._about = text
+        if helper:
+            helper_arg_help(self)
         return self
 
     def version(self, text: str, helper: bool = True) -> Cap:
         self._version = text
+        if helper:
+            helper_arg_version(self)
         return self
 
     def default(self, value: U) -> Cap:
@@ -410,7 +485,7 @@ class Cap(Generic[K, T, U]):
                         arg = self._args[key]
                         cb = arg["cb"]
                         if cb != None:
-                            cb(self, parsed["val"])
+                            parsed_map[key]["val"] = cb(self, parsed["val"])
                     except KeyError:
                         continue
 

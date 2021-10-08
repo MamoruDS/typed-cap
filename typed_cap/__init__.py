@@ -1,3 +1,3 @@
-from .cap import Cap
+from .cap import Cap, helpers
 
 name = "typed_cap"
