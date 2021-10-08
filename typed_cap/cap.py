@@ -3,15 +3,16 @@ import json
 import re
 import sys
 from inspect import getsource
-from typed_cap.constants import SUPPORT_TYPES, ValidChar
 from typed_cap.parser import Parser, ParserRegister, PRESET as PRESET_PARSERS
 from typed_cap.types import (
+    ArgOpt,
     ArgsParserKeyError,
     ArgsParserMissingArgument,
     ArgsParserMissingValue,
     ArgsParserUndefinedParser,
     ArgsParserUnexpectedValue,
     Unhandled,
+    VALID_ALIAS_CANDIDATES,
 )
 from typed_cap.utils import (
     args_parser,
@@ -38,11 +39,6 @@ from typing import (
 )
 
 
-class ArgOpt(TypedDict, total=False):
-    about: str
-    alias: ValidChar
-
-
 ArgCallback = Callable[["Cap", List[List]], Union[NoReturn, List[List]]]
 
 
@@ -50,7 +46,7 @@ class _ArgOpt(TypedDict):
     val: Optional[Any]
     type: str
     about: Optional[str]
-    alias: Optional[ValidChar]
+    alias: Optional[VALID_ALIAS_CANDIDATES]
     optional: bool
     cb: Optional[ArgCallback]
     cb_idx: int
@@ -291,7 +287,7 @@ class Cap(Generic[K, T, U]):
         key: str,
         type: Union[str, Type[str], Type[int], Type[float], Type[bool]],
         about: Optional[str] = None,
-        alias: Optional[ValidChar] = None,
+        alias: Optional[VALID_ALIAS_CANDIDATES] = None,
         optional: bool = False,
         default: Optional[Any] = None,
         callback: Optional[ArgCallback] = None,
