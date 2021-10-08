@@ -8,9 +8,11 @@ from typed_cap.types import (
 from typing import (
     Any,
     Dict,
+    Iterable,
     List,
     NoReturn,
     Optional,
+    Tuple,
     TypeVar,
     TypedDict,
     Union,
@@ -24,8 +26,8 @@ class ParsedArgs(TypedDict):
 
 def args_parser(
     argv: List[str],
-    flags: List[str],
-    options: List[str],
+    flags: List[Tuple[str, Optional[str]]],
+    options: List[Tuple[str, Optional[str]]],
     ignore_unknown: bool = False,
     ignore_unknown_flags: bool = False,
     ignore_unknown_options: bool = False,
@@ -36,6 +38,23 @@ def args_parser(
     reg = re.compile(
         r"^((-(?P<flags>[\w]{2,}))|(-(?P<alias>[\w]{1}))|(-{1,2}(?P<option>[a-zA-Z|\-|_]+)))(=(?P<val>[^$|^\n]+))?"
     )
+
+    def is_valid_key(k: str, flg: bool = False, opt: bool = False) -> bool:
+        _flags = flags if flg else []
+        _options = options if opt else []
+        return k in flatten([*_flags, *_options])  # type: ignore
+
+    def get_flag_key(k: str) -> Optional[str]:
+        for n, a in flags:
+            if n == k or a == k:
+                return n
+        return None
+
+    def get_option_key(k: str) -> Optional[str]:
+        for n, a in options:
+            if n == k or a == k:
+                return n
+        return None
 
     def raise_unknown_flag(key: str) -> Union[NoReturn, None]:
         if not (ignore_unknown or ignore_unknown_flags):
@@ -64,10 +83,11 @@ def args_parser(
             opt = m.group("flags")
             if opt != None:
                 for f in opt:
-                    if f not in flags:
+                    f_k = get_flag_key(f)
+                    if f_k == None:
                         raise_unknown_flag(f)
                     else:
-                        safe_append(f, True)
+                        safe_append(f_k, True)
                 continue
             opt = m.group("alias")
             key = "_"  # checking potential unbound
@@ -79,43 +99,50 @@ def args_parser(
             val = m.group("val")
             if key == "_":
                 raise Exception('unknown unbound issue for "key"')
-            if (key not in flags) and (key not in options):
-                # FIXME: bad implementation
+            if not is_valid_key(key, flg=True, opt=True):
                 _key = re.sub(r"\-", "_", key)
-                if (_key in flags) or (_key in options):
+                if is_valid_key(key, flg=True, opt=True):
                     key = _key
             if val != None:
                 """
                 matched option with val (`-o=sth` or `--opt==sth`)
                 """
-                if key in flags:
+                if is_valid_key(key, flg=True):
                     raise ArgsParserUnexpectedValue(key, val)
-                elif key not in options:
-                    raise_unknown_option(key)
                 else:
-                    safe_append(key, val)
+                    opt = get_option_key(key)
+                    if opt == None:
+                        raise_unknown_option(key)
+                    else:
+                        safe_append(opt, val)
             else:
                 """
                 matched option or flag depends on whether the next argument is a "val"
                 """
                 if is_next_a_value():
-                    if key in flags:
-                        safe_append(key, True)
-                    elif key in options:
-                        safe_append(key, argv.pop(0))
+                    flg = get_flag_key(key)
+                    if flg != None:
+                        safe_append(flg, True)
                     else:
-                        raise_unknown_option(key)
+                        opt = get_option_key(key)
+                        if opt != None:
+                            safe_append(opt, argv.pop(0))
+                        else:
+                            raise_unknown_option(key)
                 else:
                     val = True
-                    if key[:5] == "--no-":  # TODO:
-                        val = False
-                        key = key[5:]
-                    if key in options:
+                    # TODO: add an option to enable this
+                    # if key[:5] == "--no-":
+                    #     val = False
+                    #     key = key[5:]
+                    if is_valid_key(key, opt=True):
                         raise ArgsParserMissingValue(key)
-                    elif key in flags:
-                        safe_append(key, val)
                     else:
-                        raise_unknown_flag(key)
+                        flg = get_flag_key(key)
+                        if flg != None:
+                            safe_append(key, val)
+                        else:
+                            raise_unknown_flag(key)
         else:
             safe_append("_", arg)
 
@@ -153,7 +180,7 @@ def to_blue(text) -> str:
     return _to_color(text, "\x1b[34m")
 
 
-def flatten(a: List[List[Any]]) -> List[Any]:
+def flatten(a: List[List]) -> List:
     f = []
     for c in a:
         f = [*f, *c]

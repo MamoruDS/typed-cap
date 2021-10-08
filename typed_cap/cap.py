@@ -90,7 +90,7 @@ class Parsed(Generic[T]):
             if len(pv) == 0:
                 val[key] = parsed["default_val"]
             else:
-                val[key] = pv if parsed["is_list"] else pv[0]
+                val[key] = pv if parsed["is_list"] else pv[-1]
         return val  # type: ignore
 
     @property
@@ -368,15 +368,15 @@ class Cap(Generic[K, T, U]):
         self._name = text
         return self
 
-    def about(self, text: str, helper: bool = True) -> Cap:
+    def about(self, text: str, add_helper: bool = False) -> Cap:
         self._about = text
-        if helper:
+        if add_helper:
             helper_arg_help(self)
         return self
 
-    def version(self, text: str, helper: bool = True) -> Cap:
+    def version(self, text: str, add_helper: bool = False) -> Cap:
         self._version = text
-        if helper:
+        if add_helper:
             helper_arg_version(self)
         return self
 
@@ -401,17 +401,13 @@ class Cap(Generic[K, T, U]):
         ignore_unknown_options: bool = False,
     ) -> Parsed[T]:
 
-        flags = []
-        options = []
+        flags: List[Tuple[str, Optional[str]]] = []
+        options: List[Tuple[str, Optional[str]]] = []
         for key, opt in self._args.items():
             if opt["type"] == "bool":
-                flags.append(key)
-                if opt["alias"] != None:
-                    flags.append(opt["alias"])
+                flags.append((key, opt["alias"]))
             else:
-                options.append(key)
-                if opt["alias"] != None:
-                    options.append(opt["alias"])
+                options.append((key, opt["alias"]))
 
         try:
             out = args_parser(
@@ -428,7 +424,6 @@ class Cap(Generic[K, T, U]):
             )
         except ArgsParserUnexpectedValue as err:
             key = self._get_key(err.key)
-            # prefix = '-' if is_alias else '--'
             prefix = "--"
             self._panic(
                 f"the value for argument '{to_yellow(prefix + key)}' wasn't expected",
@@ -446,7 +441,7 @@ class Cap(Generic[K, T, U]):
 
         parsed_map: Dict[str, _ParsedVal] = {}
         for key, val in out["options"].items():
-            opt = self._args[self._get_key(key)]
+            opt = self._args[self._get_key(key)]  # TODO:
             is_list, t = self._extract_list_type(opt["type"])
             _val: List[List[Any]] = []
             for v in val:
@@ -468,7 +463,7 @@ class Cap(Generic[K, T, U]):
                             self._delimiter,
                         )
                     )
-            parsed_map[self._get_key(key)] = {
+            parsed_map[self._get_key(key)] = {  # TODO:
                 "val": _val,
                 "is_list": is_list,
                 "default_val": None,
