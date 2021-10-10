@@ -174,6 +174,10 @@ def get_terminal_width(max_width: int) -> int:
     return min(w, max_width)
 
 
+def join(a: List[str], j: str) -> str:
+    return j.join(a)
+
+
 def panic(msg: str, exit_code: int = 1) -> NoReturn:
     stderr.write(msg + "\n")
     exit(exit_code)
@@ -196,9 +200,48 @@ def remove_comments(code: Union[str, List[str]]) -> List[str]:
     return res
 
 
-def split_by_length(text: str, length: int) -> List[str]:
+def splice(
+    array: List[Any], start: int, delete_count: int, *items: Any
+) -> List[Any]:
+    return [*array[:start], *items, *array[start + delete_count :]]
+
+
+def split_by_length(
+    text: str,
+    length: int,
+    add_hyphen: bool = True,
+    remove_leading_space: bool = True,
+) -> List[str]:
     idx = range(0, len(text), length)
-    return [text[i : i + length] for i in idx]
+    if not add_hyphen:
+        return [text[i : i + length] for i in idx]
+    else:
+        lns = []
+        i = 0
+        while i < len(text):
+            sub = text[i : i + length]
+            if len(sub) < length:
+                lns.append(sub)
+                break
+            else:
+                # FIXME: potential issue
+                tail = text[i + length - 2 : i + length + 1]
+                if remove_leading_space and len(tail) == 3 and tail[2] == " ":
+                    text = join(splice(list(text), i + length, 1), "")
+                else:
+                    m = re.match(r"(?P<S>\s{1})?\w{2,}", tail)
+                    if m != None:
+                        if m.group("S") != None:
+                            text = join(
+                                splice(list(text), i + length - 2, 0, " "), ""
+                            )
+                        else:
+                            text = join(
+                                splice(list(text), i + length - 1, 0, "-"), ""
+                            )
+                lns.append(text[i : i + length])
+                i += length
+        return lns
 
 
 def _to_color(text, code: str) -> str:
