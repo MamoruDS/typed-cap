@@ -1,4 +1,4 @@
-import regex as re
+import re
 import shutil
 from sys import stderr
 from typed_cap.types import (
