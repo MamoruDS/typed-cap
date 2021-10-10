@@ -1,5 +1,9 @@
 # typed-cap
 
+Cap is a python **C**ommand-line **A**rgument **P**arser that provides **typing** support. Using Cap requires less code to generate a more robust parser.
+
+As you know python is a weakly typed programming language, and even if there is a typing module, its functionality is very weak compared to other languages like Typescript or Rust. We know it's ridiculous and pointless to compare python to any of these languages at the typing level, but properly handling these types in your code can really improve readability and reduce typing errors. And that gave us the motivation to write this package.
+
 ## Usage
 
 ⚠️ `typed_cap` required `python>=3.8`
@@ -58,12 +62,6 @@ python demo.py -vv -m="msg1" --message "msg2" -m "msg3" -n=0.1 -n=10 ~/.config
 ```
 
 ## Features
-
-### Typing
-
-<p align="center">
-    <img width="550px" src="https://github.com/MamoruDS/typed-cap/raw/main/screenshots/clip00.gif">
-</p>
 
 ### Flags
 
@@ -127,11 +125,30 @@ class T(TypedDict):
     { 'message': ['msg1', 'msg2', 'msg3'] }
     ```
 
+### Typing
+
+Cap takes an arbitrary `TypedDict` class (`T`) as input, processes the resulting arguments by the registered parser in the parse method, and finally returns a `dict` of type `T` to the user. The nice thing about this is that all the parsed arguments you get will be typing robust and can be supported by auto-completion, type checking and other features in modern editors.
+
+<p align="center">
+    <img width="550px" src="https://github.com/MamoruDS/typed-cap/raw/main/screenshots/clip00.gif">
+</p>
+
+The preset parser can help you perform basic parse functions, and the supported types include `str`, `bool`, `int` and `float`. In addition, Cap will handle `Optional` and `List` for these types (`list` in python 3.9). cap is still in its early stages, and support for `Tuple` and others will be refined in subsequent updates.
+
+Want more type support? Use `set_parser` to make Cap support your custom types.
+
+```python
+Cap.set_parser(
+        self, type_name: str, parser: Parser, allow_list: bool
+    ) -> Cap
+```
+
 ### Helpers
 
 Cap proviedes some useful argument helpers
 
 -   `help`
+    generate help documents that automatically adapt to the terminal width
     usage:
     ```python
     helpers["arg_help"](
