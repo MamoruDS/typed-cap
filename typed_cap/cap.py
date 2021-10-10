@@ -17,8 +17,10 @@ from typed_cap.types import (
 from typed_cap.utils import (
     args_parser,
     flatten,
+    get_terminal_width,
     panic,
     remove_comments,
+    split_by_length,
     to_yellow,
     to_blue,
     unwrap_or,
@@ -129,7 +131,7 @@ CAP_ERR = Union[
 
 def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
     lns: List[Tuple[int, str]] = []
-    indent_size = 4
+    INDENT_SIZE = 4
     if v[0][0]:
         if c._about != None:
             lns.append((0, c._about))
@@ -142,13 +144,27 @@ def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
             if len(alias) == 1:
                 alias = f"-{alias},"
             ln = f"{alias}--{key}"
-            arg_lns.append((ln, unwrap_or(opt["about"], "")))
             max_opt_len = max(len(ln), max_opt_len)
-        for ln in arg_lns:
-            lns.append((1, ln[0].ljust(max_opt_len + 4) + ln[1]))
+            arg_lns.append((key, ln))
 
+        MIN_ABOUT_WIDTH: int = 10
+        MAX_WIDTH: int = 100
+        prefix_width: int = max_opt_len + 4
+        width = max(
+            get_terminal_width(MAX_WIDTH) - 1 * INDENT_SIZE,
+            prefix_width + MIN_ABOUT_WIDTH,
+        )
+        remain_width = width - prefix_width
+        for key, ln in arg_lns:
+            about = unwrap_or(c._args[key]["about"], "")
+            about = split_by_length(about, remain_width)
+            for i, abt in enumerate(about):
+                if i == 0:
+                    lns.append((1, ln.ljust(max_opt_len + 4) + abt))
+                else:
+                    lns.append((1, "".ljust(prefix_width) + abt))
         for indent, ln in lns:
-            print("".ljust(indent * indent_size) + ln)
+            print("".ljust(indent * INDENT_SIZE) + ln)
     exit(0)
 
 

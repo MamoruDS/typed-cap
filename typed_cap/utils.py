@@ -1,4 +1,5 @@
 import regex as re
+import shutil
 from sys import stderr
 from typed_cap.types import (
     ArgsParserKeyError,
@@ -160,31 +161,17 @@ def args_parser(
     return parsed_args
 
 
-def _to_color(text, code: str) -> str:
-    return f"{code}{text}\x1b[0m"
-
-
-def to_red(text) -> str:
-    return _to_color(text, "\x1b[31m")
-
-
-def to_green(text) -> str:
-    return _to_color(text, "\x1b[32m")
-
-
-def to_yellow(text) -> str:
-    return _to_color(text, "\x1b[33m")
-
-
-def to_blue(text) -> str:
-    return _to_color(text, "\x1b[34m")
-
-
 def flatten(a: List[List]) -> List:
     f = []
     for c in a:
         f = [*f, *c]
     return f
+
+
+def get_terminal_width(max_width: int) -> int:
+    s = shutil.get_terminal_size((999, 999))
+    w = s.columns
+    return min(w, max_width)
 
 
 def panic(msg: str, exit_code: int = 1) -> NoReturn:
@@ -207,6 +194,31 @@ def remove_comments(code: Union[str, List[str]]) -> List[str]:
             continue
         res.append(l)
     return res
+
+
+def split_by_length(text: str, length: int) -> List[str]:
+    idx = range(0, len(text), length)
+    return [text[i : i + length] for i in idx]
+
+
+def _to_color(text, code: str) -> str:
+    return f"{code}{text}\x1b[0m"
+
+
+def to_red(text) -> str:
+    return _to_color(text, "\x1b[31m")
+
+
+def to_green(text) -> str:
+    return _to_color(text, "\x1b[32m")
+
+
+def to_yellow(text) -> str:
+    return _to_color(text, "\x1b[33m")
+
+
+def to_blue(text) -> str:
+    return _to_color(text, "\x1b[34m")
 
 
 D = TypeVar("D")
