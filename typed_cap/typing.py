@@ -1,4 +1,3 @@
-import typing
 from typing import (
     Any,
     Callable,
@@ -16,13 +15,15 @@ from typing import (
 from typing import (
     _GenericAlias,  # type: ignore
     _LiteralGenericAlias,  # type: ignore
+    _TypedDictMeta,  # type: ignore
     _UnionGenericAlias,  # type: ignore
 )
 
 CLS_Literal: Type = _LiteralGenericAlias
 CLS_None: Type = type(None)
-CLS_Union: Type = _UnionGenericAlias
 CLS_Queue: Type = _GenericAlias
+CLS_TypedDict: Type = _TypedDictMeta
+CLS_Union: Type = _UnionGenericAlias
 
 
 VALID_RES = Tuple[bool, Optional[Any], Optional[Exception]]
@@ -213,3 +214,25 @@ def validation(t: Type, val: Any, cvt: bool):
         raise Exception("not found")
     else:
         return res
+
+
+def typpeddict_parse(t: Type) -> Dict[str, Type]:
+    if type(t) != CLS_TypedDict:
+        raise Exception  # TODO:
+    key_dict: Dict[str, Type] = t.__annotations__
+    typed: Dict[str, Type] = dict(((k, CLS_None) for k in key_dict.keys()))
+
+    def get_t(key: str, required: bool) -> Type:
+        raw_t = key_dict[key]
+        if required:
+            return raw_t
+        else:
+            return Optional[raw_t]
+
+    keys_req = t.__required_keys__
+    keys_opt = t.__optional_keys__
+    for key in keys_req:
+        typed[key] = get_t(key, True)
+    for key in keys_opt:
+        typed[key] = get_t(key, False)
+    return typed
