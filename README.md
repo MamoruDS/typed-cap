@@ -1,5 +1,7 @@
 # typed-cap
 
+[![pypi](https://img.shields.io/pypi/v/typed-cap?style=flat-square)](https://pypi.org/project/typed-cap/)
+
 Cap is a python **C**ommand-line **A**rgument **P**arser that provides **typing** support. Using Cap requires less code to generate a more robust parser.
 
 As you know python is a weakly typed programming language, and even if there is a typing module, its functionality is very weak compared to other languages like Typescript or Rust. We know it's ridiculous and pointless to compare python to any of these languages at the typing level, but properly handling these types in your code can really improve readability and reduce typing errors. And that gave us the motivation to write this package.
