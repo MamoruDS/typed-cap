@@ -1,4 +1,4 @@
-from typing import Literal, Optional, TypedDict
+from typing import Dict, List, Literal, Optional, Tuple, TypedDict, Union
 
 
 VALID_ALIAS_CANDIDATES = Literal[
@@ -70,6 +70,21 @@ VALID_ALIAS_CANDIDATES = Literal[
 class ArgOpt(TypedDict, total=False):
     about: str
     alias: VALID_ALIAS_CANDIDATES
+
+
+ArgTypes = Literal["flag", "option"]
+ArgNamed = Tuple[str, Optional[str]]  # (name, alias)
+
+
+class ArgsParserOptions(TypedDict, total=False):
+    ignore_unknown: bool
+    ignore_unknown_flags: bool
+    ignore_unknown_options: bool
+
+
+class ArgsParserResults(TypedDict):
+    args: List[str]
+    options: Dict[str, List[Union[str, bool]]]
 
 
 class ArgsParserKeyError(Exception):
