@@ -6,6 +6,7 @@ from typing import (
     Optional,
     Tuple,
     Type,
+    TypeVar,
     TypedDict,
     Union,
     get_args,
@@ -232,9 +233,44 @@ VALIDATOR = ValidVal(
 )
 
 
+def is_optional(t: Type) -> bool:
+    try:
+        can = get_type_candidates(t)
+        return CLS_None in can
+    except Exception:
+        return False
+
+
+OT = TypeVar("OT")
+# FIXME: Geneirc for Union???
+# OT = TypeVar('OT', bound=CLS_Union)
+
+# FIXME: incorrect hinting:
+# ```
+# can = get_type_candidates(Optional[int])
+# -> (variable) can: Tuple[ Type[int] | None]
+# ```
+
+
+def get_type_candidates(t: Type[OT]) -> Tuple[Type[OT]]:
+    """
+    `<T extends Union>(t: Union<T>): T | NoneType`
+
+    Examples
+    ----------
+    >>> get_type_candidates(Optional[int])
+    (<class 'int'>, <class 'NoneType'>)
+    """
+    if t.__class__ == CLS_Union:
+        can = get_args(t)
+        return can  # type: ignore
+    else:
+        raise Exception()  # TODO:
+
+
 def typpeddict_parse(t: Type) -> Dict[str, Type]:
     if type(t) != CLS_TypedDict:
-        raise Exception  # TODO:
+        raise Exception("t should a TypedDict for parsing")  # TODO:
     key_dict: Dict[str, Type] = t.__annotations__
     typed: Dict[str, Type] = dict(((k, CLS_None) for k in key_dict.keys()))
 
