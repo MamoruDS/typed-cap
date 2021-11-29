@@ -80,6 +80,7 @@ class ArgsParserOptions(TypedDict, total=False):
     ignore_unknown: bool
     ignore_unknown_flags: bool
     ignore_unknown_options: bool
+    disable_hyphen_conversion: bool
 
 
 class ArgsParserResults(TypedDict):

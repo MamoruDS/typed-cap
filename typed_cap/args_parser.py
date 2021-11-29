@@ -48,8 +48,10 @@ def args_parser(
         return None
 
     def get_option_key(k: str) -> Optional[str]:
+        if not options.get("disable_hyphen_conversion", False):
+            k = k.replace("-", "_")
         for n, a in named_options:
-            print(f"n->{n}\na->{a}")
+            # FIXME: checking potential repeated option names
             if n == k or a == k:
                 return n
         return None
