@@ -65,14 +65,16 @@ class ValidVal:
                 else:
                     continue
         if res == None:
-            print(f"> t.__class__: {t.__class__}")
-            print(f"> type(t): {type(t)}")
+            # TODO:
+            print(f"\t> t.__class__: {t.__class__}")
+            print(f"\t> type(t): {type(t)}")
+            print(f"\t> t: {t}")
             raise Exception("not found")
         else:
             return res
 
 
-def _valid_none(vv: ValidVal, t: CLS_None, val: Any, _: bool) -> VALID_RES:
+def _valid_none(_vv: ValidVal, t: CLS_None, val: Any, _cvt: bool) -> VALID_RES:
     b = False
     v = None
     if type(val) == t:
@@ -81,7 +83,33 @@ def _valid_none(vv: ValidVal, t: CLS_None, val: Any, _: bool) -> VALID_RES:
     return b, v, None
 
 
-def _valid_int(vv: ValidVal, t: Any, val: Any, cvt: bool) -> VALID_RES:
+def _valid_bool(_vv: ValidVal, _t: Any, val: Any, cvt: bool) -> VALID_RES:
+    b = False
+    v = None
+    if cvt:
+        print(f"\t$D cvt-ON; val: {val}")
+        if val in [
+            0,
+            "false",
+            "False",
+        ]:  # TODO: custom valid values
+            v = False
+            b = True
+        elif val in [
+            1,
+            "true",
+            "True",
+        ]:  # TODO: custom valid values
+            v = True
+            b = True
+    else:
+        if type(val) == bool:
+            v = val
+            b = True
+    return b, v, None
+
+
+def _valid_int(_vv: ValidVal, _t: Any, val: Any, cvt: bool) -> VALID_RES:
     b = False
     v = None
     e = None
@@ -98,7 +126,7 @@ def _valid_int(vv: ValidVal, t: Any, val: Any, cvt: bool) -> VALID_RES:
     return b, v, e
 
 
-def _valid_float(vv: ValidVal, _: Any, val: Any, cvt: bool) -> VALID_RES:
+def _valid_float(_vv: ValidVal, _t: Any, val: Any, cvt: bool) -> VALID_RES:
     b = False
     v = None
     e = None
@@ -115,7 +143,7 @@ def _valid_float(vv: ValidVal, _: Any, val: Any, cvt: bool) -> VALID_RES:
     return b, v, e
 
 
-def _valid_str(vv: ValidVal, _: Any, val: Any, cvt: bool) -> VALID_RES:
+def _valid_str(_vv: ValidVal, _t: Any, val: Any, cvt: bool) -> VALID_RES:
     b = False
     v = None
     e = None
@@ -206,8 +234,17 @@ def _valid_literal(
 
 VALIDATOR = ValidVal(
     {
+        "bool": {
+            "t": bool,
+            "c": None,
+            "v": _valid_bool,
+        },
         "int": {"t": int, "c": None, "v": _valid_int},
-        "float": {"t": float, "c": None, "v": _valid_float},
+        "float": {
+            "t": float,
+            "c": None,
+            "v": _valid_float,
+        },
         "str": {"t": str, "c": None, "v": _valid_str},
         "none": {
             "t": CLS_None,
