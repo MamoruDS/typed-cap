@@ -1,25 +1,31 @@
 from __future__ import annotations
 import json
-import re
 import sys
-from inspect import getsource
-from typed_cap.parser import Parser, ParserRegister, PRESET as PRESET_PARSERS
 from typed_cap.types import (
+    ArgNamed,
     ArgOpt,
+    ArgTypes,
     ArgsParserKeyError,
     ArgsParserMissingArgument,
     ArgsParserMissingValue,
+    ArgsParserOptions,
     ArgsParserUndefinedParser,
     ArgsParserUnexpectedValue,
     Unhandled,
     VALID_ALIAS_CANDIDATES,
 )
+from typed_cap.args_parser import args_parser
+from typed_cap.typing import (
+    VALIDATOR,
+    get_type_candidates,
+    is_optional,
+    is_queue,
+    typpeddict_parse,
+)
 from typed_cap.utils import (
-    args_parser,
     flatten,
     get_terminal_width,
     panic,
-    remove_comments,
     split_by_length,
     to_yellow,
     to_blue,
@@ -31,7 +37,6 @@ from typing import (
     Dict,
     Generic,
     List,
-    NamedTuple,
     NoReturn,
     Optional,
     Tuple,
@@ -47,10 +52,9 @@ ArgCallback = Callable[["Cap", List[List]], Union[NoReturn, List[List]]]
 
 class _ArgOpt(TypedDict):
     val: Optional[Any]
-    type: str
+    type: Type
     about: Optional[str]
     alias: Optional[VALID_ALIAS_CANDIDATES]
-    optional: bool
     cb: Optional[ArgCallback]
     cb_idx: int
     hide: bool
@@ -187,10 +191,9 @@ def helper_arg_help(
 ):
     cap.add_argument(
         name,
-        type="bool",
+        type=Optional[bool],
         about="display the help text",
         alias=alias,
-        optional=True,
         callback=_helper_help_cb,
         callback_priority=0,
         prevent_overwrite=True,
@@ -204,10 +207,9 @@ def helper_arg_version(
 ):
     cap.add_argument(
         name,
-        type="bool",
+        type=Optional[bool],
         about="print version info and exit",
         alias=alias,
-        optional=True,
         callback=_helper_version_cb,
         callback_priority=2,
         prevent_overwrite=True,
@@ -229,7 +231,6 @@ class Cap(Generic[K, T, U]):
     _argstype: Type[T]
     _args: Dict[str, _ArgOpt]
     _delimiter: Optional[str] = ","
-    _parser_register: ParserRegister
     _about: Optional[str]
     _name: Optional[str]
     _version: Optional[str]
@@ -240,7 +241,7 @@ class Cap(Generic[K, T, U]):
         argstype: Type[T],
     ) -> None:
         self._argstype = argstype
-        self._parser_register = PRESET_PARSERS
+        self._args = {}
         self._parse_argstype()
         self._about = None
         self._name = None
@@ -257,54 +258,22 @@ class Cap(Generic[K, T, U]):
                 return key
         panic(f"key '{name}' not found")
 
-    def _extract_list_type(self, t: str) -> Tuple[bool, str]:
-        if t == "list":
-            return True, "str"
-        reg = re.compile(r"^(list\[(?P<type>\w+)\])$")
-        m = reg.match(t)
-        if m != None:
-            return True, m.group("type")
-        else:
-            return False, t
-
     def _panic(self, msg: str, alt_title: str, err: CAP_ERR) -> NoReturn:
         if self._raw_err:
             raise err
         else:
             title = unwrap_or(self._name, alt_title)
-            err_msg = f"{title}: {msg}"
+            err_msg = f"{title}: {msg}\n\t{err.__class__.__name__}"
             panic(err_msg)
 
     def _parse_argstype(self):
-        types = remove_comments(getsource(self._argstype))[1:]
-        self._args = {}
-        reg = re.compile(r"^(optional)\[(?P<type>.+)\]$")
-        for t in types:
-            t = t.split(":")
-            if len(t) != 2:
-                if len(t) == 1:
-                    if t[0].lstrip() == "":
-                        continue
-                    if t[0].lstrip()[:4] == "pass":
-                        continue
-                raise Exception(
-                    "failed to parse given types in TypedDict"
-                )  # TODO:
-            t = [x.lstrip() for x in t]
-            t = [x.rstrip() for x in t]
-            key, t = t
-            opt: bool = False
-            t = t.lower()
-            m = reg.match(t)
-            if m != None:
-                opt = True
-                t = m.group("type")
+        typed = typpeddict_parse(self._argstype)
+        for key, t in typed.items():
             self._args[key] = {
                 "val": None,
                 "type": t,
                 "about": None,
                 "alias": None,
-                "optional": opt,
                 "cb": None,
                 "cb_idx": 0,
                 "hide": False,
@@ -313,10 +282,9 @@ class Cap(Generic[K, T, U]):
     def add_argument(
         self,
         key: str,
-        type: Union[str, Type[str], Type[int], Type[float], Type[bool]],
+        type: Type,
         about: Optional[str] = None,
         alias: Optional[VALID_ALIAS_CANDIDATES] = None,
-        optional: bool = False,
         default: Optional[Any] = None,
         callback: Optional[ArgCallback] = None,
         callback_priority: int = 1,
@@ -347,7 +315,6 @@ class Cap(Generic[K, T, U]):
                 "type": t,
                 "about": about,
                 "alias": alias,
-                "optional": optional,
                 "cb": callback,
                 "cb_idx": callback_priority,
                 "hide": True,
@@ -356,14 +323,6 @@ class Cap(Generic[K, T, U]):
 
     def set_delimiter(self, delimiter: Optional[str]) -> Cap:
         self._delimiter = delimiter
-        return self
-
-    def set_parser(
-        self, type_name: str, parser: Parser, allow_list: bool
-    ) -> Cap:
-        self._parser_register.__setitem__(
-            type_name, {"parser": parser, "allow_list": allow_list}
-        )
         return self
 
     def set_callback(
@@ -408,34 +367,39 @@ class Cap(Generic[K, T, U]):
 
     def helper(self, helpers: Dict[K, ArgOpt]) -> Cap:
         for arg, opt in helpers.items():
-            self._args[arg] = {**self._args[arg], **opt}  # type: ignore[misc]
+            try:
+                self._args[arg] = {**self._args[arg], **opt}  # type: ignore[misc]
+            except Exception as err:
+                pass
+                # TODO: rasing potential KeyError
+                # something like defined message but enter messages in cap.helper
         return self
 
     def parse(
         self,
-        args: List[str] = sys.argv[1:],
-        ignore_unknown: bool = False,
-        ignore_unknown_flags: bool = False,
-        ignore_unknown_options: bool = False,
+        argv: List[str] = sys.argv[1:],
+        args_parser_options: Optional[ArgsParserOptions] = None,
     ) -> Parsed[T]:
+        def _is_flag(t: Type) -> bool:
+            if t == bool:
+                return True
+            try:
+                can = get_type_candidates(t)
+                return bool in can
+            except Exception:
+                return False
 
-        flags: List[Tuple[str, Optional[str]]] = []
-        options: List[Tuple[str, Optional[str]]] = []
+        named_args: List[Tuple[ArgTypes, ArgNamed]] = []
         for key, opt in self._args.items():
-            if opt["type"] == "bool":
-                flags.append((key, opt["alias"]))
-            else:
-                options.append((key, opt["alias"]))
+            named_args.append(
+                (
+                    "flag" if _is_flag(opt["type"]) else "option",
+                    (key, opt["alias"]),
+                )
+            )
 
         try:
-            out = args_parser(
-                args,
-                flags,
-                options,
-                ignore_unknown=ignore_unknown,
-                ignore_unknown_flags=ignore_unknown_flags,
-                ignore_unknown_options=ignore_unknown_options,
-            )
+            out = args_parser(argv, named_args, args_parser_options)
         except ArgsParserKeyError as err:
             self._panic(
                 f"unknown {err.key_type} '{err.key}'", "Cap.parse", err
@@ -458,34 +422,25 @@ class Cap(Generic[K, T, U]):
             )
 
         parsed_map: Dict[str, _ParsedVal] = {}
-        for key, val in out["options"].items():
-            opt = self._args[self._get_key(key)]  # TODO:
-            is_list, t = self._extract_list_type(opt["type"])
-            _val: List[List[Any]] = []
-            for v in val:
-                if isinstance(v, bool):
-                    _val.append([v])
-                    continue
-                parser_inf = self._parser_register.get(t)
-                if parser_inf == None:
-                    self._panic(
-                        f"cannot handle type {to_blue(t)} because it has not been registered yet",
-                        "Cap.parse",
-                        ArgsParserUndefinedParser(t),
-                    )
-                else:
-                    _val.append(
-                        parser_inf["parser"](
-                            v,
-                            is_list and parser_inf["allow_list"],
-                            self._delimiter,
-                        )
-                    )
-            parsed_map[self._get_key(key)] = {  # TODO:
-                "val": _val,
-                "is_list": is_list,
-                "default_val": None,
-            }
+        for name, val in out["options"].items():
+            key = self._get_key(name)
+            parsed = parsed_map.get(
+                key,
+                {
+                    "val": [],
+                    "default_val": None,
+                    "is_list": False,
+                },
+            )
+            opt = self._args[key]  # TODO:
+            val = unwrap_or(VALIDATOR.delimiter, ",").join(
+                [str(v) for v in val]
+            )
+            valid, val_get, err = VALIDATOR.extract(opt["type"], val, cvt=True)
+            # TODO: carry extract failed
+            parsed["val"].append([val_get])
+            parsed["is_list"] = is_queue(opt["type"], allow_optional=True)
+            parsed_map[key] = parsed
 
         # callbacks
         cb_list: List[Tuple[str, int]] = []
@@ -515,17 +470,18 @@ class Cap(Generic[K, T, U]):
                     parsed_map.pop(key)
             else:
                 if parsed_map.get(key) == None:
-                    is_list, t = self._extract_list_type(opt["type"])
-                    if opt["val"] == None and not opt["optional"]:
+                    parsed_map[key] = {
+                        "val": [],
+                        "default_val": opt[
+                            "val"
+                        ],  # TODO: checking typeof default value
+                        "is_list": is_queue(opt["type"]),
+                    }
+                    if opt["val"] == None and not is_optional(opt["type"]):
                         self._panic(
                             f"option '{to_yellow(key)}':{to_blue(opt['type'])} is required but it is missing",
                             "Cap.parse",
                             ArgsParserMissingArgument(key, opt["type"]),
                         )
-                    parsed_map[key] = {
-                        "val": [],
-                        "is_list": is_list,
-                        "default_val": opt["val"],
-                    }
 
         return Parsed(out["args"], parsed_map)

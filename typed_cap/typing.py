@@ -87,7 +87,6 @@ def _valid_bool(_vv: ValidVal, _t: Any, val: Any, cvt: bool) -> VALID_RES:
     b = False
     v = None
     if cvt:
-        print(f"\t$D cvt-ON; val: {val}")
         if val in [
             0,
             "false",
@@ -268,6 +267,30 @@ VALIDATOR = ValidVal(
         },
     }
 )
+
+
+def is_queue(t: Type, allow_optional: bool = False) -> bool:
+    if t == CLS_Queue:
+        return True
+    else:
+        try:
+            can = get_type_candidates(t)
+            if allow_optional and (CLS_None in can):
+                # TODO: len(can) == 2?
+                # return CLS_Queue in can
+                for c in can:
+                    try:
+                        if c.__class__ == CLS_Queue:
+                            return True
+                        else:
+                            return False
+                    except Exception:
+                        return False
+            else:
+                return False
+        except Exception:
+            pass
+        return False
 
 
 def is_optional(t: Type) -> bool:
