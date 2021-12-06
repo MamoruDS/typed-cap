@@ -272,6 +272,8 @@ VALIDATOR = ValidVal(
 def is_queue(t: Type, allow_optional: bool = False) -> bool:
     if t == CLS_Queue:
         return True
+    elif get_origin(t) in [tuple, list]:
+        return True
     else:
         try:
             can = get_type_candidates(t)
@@ -281,6 +283,8 @@ def is_queue(t: Type, allow_optional: bool = False) -> bool:
                 for c in can:
                     try:
                         if c.__class__ == CLS_Queue:
+                            return True
+                        elif get_origin(c) in [tuple, list]:
                             return True
                         else:
                             return False
