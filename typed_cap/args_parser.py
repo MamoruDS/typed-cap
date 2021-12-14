@@ -8,8 +8,15 @@ from typed_cap.types import (
     ArgsParserUnexpectedValue,
     ArgsParserResults,
 )
-from typed_cap.utils import flatten, unwrap_or
-from typing import Dict, List, NoReturn, Optional, Tuple, Union
+from typed_cap.utils import unwrap_or
+from typing import (
+    Dict,
+    List,
+    NoReturn,
+    Optional,
+    Tuple,
+    Union,
+)
 
 
 def args_parser(
@@ -36,10 +43,21 @@ def args_parser(
         else:
             pass
 
-    def is_valid_key(k: str, flg: bool = False, opt: bool = False) -> bool:
-        _named_flags = named_flags if flg else []
-        _named_options = named_options if opt else []
-        return k in flatten([*_named_flags, *_named_options])  # type: ignore
+    def get_valid_key(k: str) -> Tuple[str, bool, bool]:
+        key = k
+        is_flag = False
+        is_option = False
+        #
+        _key = get_flag_key(k)
+        if _key != None:
+            key = _key
+            is_flag = True
+        #
+        _key = get_option_key(k)
+        if _key != None:
+            key = _key
+            is_option = True
+        return key, is_flag, is_option
 
     def get_flag_key(k: str) -> Optional[str]:
         for n, a in named_flags:
@@ -104,51 +122,40 @@ def args_parser(
                 key = opt
             val = m.group("val")
             if key == "_":
-                raise Exception('unknown unbound issue for "key"')
-            if not is_valid_key(key, flg=True, opt=True):
-                _key = re.sub(r"\-", "_", key)
-                if is_valid_key(key, flg=True, opt=True):
-                    key = _key
+                raise Exception(f"unknown unbound issue for '{key}'")
             if val != None:
                 """
                 matched option with val (`-o=sth` or `--opt==sth`)
                 """
-                if is_valid_key(key, flg=True):
-                    raise ArgsParserUnexpectedValue(key, val)
-                else:
-                    opt = get_option_key(key)
-                    if opt == None:
-                        raise_unknown_option(key)
-                    else:
-                        safe_append(opt, val)
+                v_key, is_flg, is_opt = get_valid_key(key)
+                if not (is_flg or is_opt):
+                    raise_unknown_option(key)
+                if is_flg:
+                    raise ArgsParserUnexpectedValue(v_key, val)
+                if is_opt:
+                    safe_append(v_key, val)
             else:
                 """
                 matched option or flag depends on whether the next argument is a "val"
                 """
+                v_key, is_flg, is_opt = get_valid_key(key)
+                if not (is_flg or is_opt):
+                    raise_unknown_option(key)
                 if is_next_a_value():
-                    flg = get_flag_key(key)
-                    if flg != None:
-                        safe_append(flg, True)
-                    else:
-                        opt = get_option_key(key)
-                        if opt != None:
-                            safe_append(opt, argv.pop(0))
-                        else:
-                            raise_unknown_option(key)
+                    if is_flg:
+                        # TODO: more description here: why assign `True`
+                        safe_append(v_key, True)
+                    if is_opt:
+                        safe_append(v_key, argv.pop(0))
                 else:
-                    val = True
-                    # TODO: add an option to enable this
-                    # if key[:5] == "--no-":
-                    #     val = False
-                    #     key = key[5:]
-                    if is_valid_key(key, opt=True):
-                        raise ArgsParserMissingValue(key)
-                    else:
-                        flg = get_flag_key(key)
-                        if flg != None:
-                            safe_append(key, val)
-                        else:
-                            raise_unknown_flag(key)
+                    if is_flg:
+                        # TODO: add an option to enable this
+                        # if key[:5] == "--no-":
+                        #     val = False
+                        #     key = key[5:]
+                        safe_append(v_key, True)
+                    if is_opt:
+                        raise ArgsParserMissingValue(v_key)
         else:
             safe_append("_", arg)
 
