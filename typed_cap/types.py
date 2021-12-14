@@ -1,4 +1,14 @@
-from typing import Dict, List, Literal, Optional, Tuple, TypedDict, Union
+from typing import (
+    Any,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Type,
+    TypedDict,
+    Union,
+)
 
 
 VALID_ALIAS_CANDIDATES = Literal[
@@ -90,7 +100,7 @@ class ArgsParserResults(TypedDict):
 
 class ArgsParserKeyError(Exception):
     key: str
-    key_type: str
+    key_type: ArgTypes
 
     def __init__(
         self,
@@ -136,6 +146,38 @@ class ArgsParserUnexpectedValue(Exception):
     def __init__(self, key: str, value: str, *args: object) -> None:
         self.key = key
         self.value = value
+        super().__init__(*args)
+
+
+class _CapInvalidValue(Exception):
+    key: str
+    type_class: Type
+    val: Any
+
+    def __init__(
+        self, key: str, type_class: Type, val: Any, *args: object
+    ) -> None:
+        self.key = key
+        self.type_class = type_class
+        self.val = val
+        super().__init__(*args)
+
+
+class CapInvalidValue(_CapInvalidValue):
+    pass
+
+
+class CapInvalidDefaultValue(_CapInvalidValue):
+    pass
+
+
+class CapUnknownArg(Exception):
+    key: str
+    desc: Optional[str]
+
+    def __init__(self, key: str, desc: str, *args: object) -> None:
+        self.key = key
+        self.desc = desc
         super().__init__(*args)
 
 
