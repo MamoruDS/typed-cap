@@ -171,6 +171,24 @@ class CapInvalidDefaultValue(_CapInvalidValue):
     pass
 
 
+class CapInvalidAlias(Exception):
+    key: str
+    alias: str
+
+    def __init__(self, key: str, alias: str, *args: object) -> None:
+        self.key = key
+        self.alias = alias
+        super().__init__(*args)
+
+
+class CapArgKeyNotFound(Exception):
+    key: str
+
+    def __init__(self, key: str, *args: object) -> None:
+        self.key = key
+        super().__init__(*args)
+
+
 class CapUnknownArg(Exception):
     key: str
     desc: Optional[str]

@@ -11,6 +11,11 @@ from typed_cap.types import (
     ArgsParserOptions,
     ArgsParserUndefinedParser,
     ArgsParserUnexpectedValue,
+    CapArgKeyNotFound,
+    CapInvalidAlias,
+    CapInvalidDefaultValue,
+    CapInvalidValue,
+    CapUnknownArg,
     Unhandled,
     VALID_ALIAS_CANDIDATES,
 )
@@ -27,6 +32,7 @@ from typed_cap.utils import (
     get_terminal_width,
     panic,
     split_by_length,
+    to_red,
     to_yellow,
     to_blue,
     unwrap_or,
@@ -96,7 +102,7 @@ class Parsed(Generic[T]):
             if len(pv) == 0:
                 val[key] = parsed["default_val"]
             else:
-                val[key] = pv if parsed["is_list"] else pv[-1]
+                val[key] = flatten(pv) if parsed["is_list"] else pv[-1]
         return val  # type: ignore
 
     @property
@@ -129,6 +135,9 @@ CAP_ERR = Union[
     ArgsParserMissingValue,
     ArgsParserUndefinedParser,
     ArgsParserUnexpectedValue,
+    CapInvalidDefaultValue,
+    CapInvalidValue,
+    CapUnknownArg,
     Unhandled,
 ]
 
@@ -191,7 +200,7 @@ def helper_arg_help(
 ):
     cap.add_argument(
         name,
-        type=Optional[bool],
+        arg_type=Optional[bool],
         about="display the help text",
         alias=alias,
         callback=_helper_help_cb,
@@ -207,7 +216,7 @@ def helper_arg_version(
 ):
     cap.add_argument(
         name,
-        type=Optional[bool],
+        arg_type=Optional[bool],
         about="print version info and exit",
         alias=alias,
         callback=_helper_version_cb,
@@ -225,6 +234,28 @@ helpers: _Helpers = {
     "arg_help": helper_arg_help,
     "arg_version": helper_arg_version,
 }
+
+
+def colorize_text_t_type(t: Type) -> str:
+    tn = ""
+    try:
+        tn = t.__name__
+    except AttributeError:
+        tn = str(t)
+    return to_blue(tn)
+
+
+def colorize_text_t_option_name(key: str) -> str:
+    return to_yellow(key)
+
+
+def colorize_text_t_value(val: Any) -> str:
+    try:
+        return to_red(str(val))
+    except Exception as err:
+        print(err)
+        return "[...]"
+        # TODO:
 
 
 class Cap(Generic[K, T, U]):
@@ -248,15 +279,13 @@ class Cap(Generic[K, T, U]):
         self._version = None
         self._raw_err = False
 
-    def _get_key(
-        self, name: str
-    ) -> Union[NoReturn, str,]:
+    def _get_key(self, name: str) -> Union[NoReturn, str]:
         for key, opt in self._args.items():
             if key == name:
                 return key
             if opt["alias"] == name:
                 return key
-        panic(f"key '{name}' not found")
+        raise CapArgKeyNotFound(name)
 
     def _panic(self, msg: str, alt_title: str, err: CAP_ERR) -> NoReturn:
         if self._raw_err:
@@ -282,7 +311,7 @@ class Cap(Generic[K, T, U]):
     def add_argument(
         self,
         key: str,
-        type: Type,
+        arg_type: Type,
         about: Optional[str] = None,
         alias: Optional[VALID_ALIAS_CANDIDATES] = None,
         default: Optional[Any] = None,
@@ -293,26 +322,9 @@ class Cap(Generic[K, T, U]):
         if self._args.get(key) != None and prevent_overwrite:
             return self
         else:
-            t: str
-            if isinstance(type, str):
-                t = type
-            else:
-                if type == str:
-                    t = "str"
-                elif type == int:
-                    t = "int"
-                elif type == float:
-                    t = "float"
-                elif type == bool:
-                    t = "bool"
-                else:
-                    raise Unhandled(
-                        desc="cannot convert given type to string",
-                        loc="Cap.add_argument",
-                    )
             self._args[key] = {
                 "val": default,
-                "type": t,
+                "type": arg_type,
                 "about": about,
                 "alias": alias,
                 "cb": callback,
@@ -362,17 +374,44 @@ class Cap(Generic[K, T, U]):
 
     def default_strict(self, value: T) -> Cap:
         for arg, val in value.items():
-            self._args[arg]["val"] = val
+            try:
+                t = self._args[arg]["type"]
+                valid, _, _ = VALIDATOR.extract(t, val, cvt=False)
+                if valid:
+                    self._args[arg]["val"] = val
+                else:
+                    # raise CapInvalidDefaultValue(arg, t, val)
+                    self._panic(
+                        f"invalid default value {colorize_text_t_value(val)} for option {colorize_text_t_option_name(arg)}:{colorize_text_t_type(t)}",
+                        "Cap.default_strict",
+                        CapInvalidDefaultValue(arg, t, val),
+                    )
+            except KeyError as err:
+                name = str(err)
+                self._panic(
+                    f"unknown named argument {colorize_text_t_option_name(name)}",
+                    "Cap.default_strict",
+                    CapUnknownArg(name, "default_strict"),
+                )
+            except Exception as err:
+                raise Unhandled(
+                    desc=f"unknown issue: {err}", loc="Cap.default_strict"
+                )
         return self
 
     def helper(self, helpers: Dict[K, ArgOpt]) -> Cap:
         for arg, opt in helpers.items():
             try:
                 self._args[arg] = {**self._args[arg], **opt}  # type: ignore[misc]
+            except KeyError as err:
+                name = str(err)
+                self._panic(
+                    f"unknown named argument {colorize_text_t_option_name(name)}",
+                    "Cap.helper",
+                    CapUnknownArg(name, "helper"),
+                )
             except Exception as err:
-                pass
-                # TODO: rasing potential KeyError
-                # something like defined message but enter messages in cap.helper
+                raise Unhandled(desc=f"unknown issue: {err}", loc="Cap.helper")
         return self
 
     def parse(
@@ -402,13 +441,15 @@ class Cap(Generic[K, T, U]):
             out = args_parser(argv, named_args, args_parser_options)
         except ArgsParserKeyError as err:
             self._panic(
-                f"unknown {err.key_type} '{err.key}'", "Cap.parse", err
+                f"unknown {err.key_type} {colorize_text_t_option_name(err.key)}",
+                "Cap.parse",
+                err,
             )
         except ArgsParserUnexpectedValue as err:
             key = self._get_key(err.key)
             prefix = "--"
             self._panic(
-                f"the value for argument '{to_yellow(prefix + key)}' wasn't expected",
+                f"the value for argument {colorize_text_t_option_name(prefix + key)} wasn't expected",
                 "Cap.parse",
                 err,
             )
@@ -416,12 +457,13 @@ class Cap(Generic[K, T, U]):
             key = self._get_key(err.key)
             prefix = "--"
             self._panic(
-                f"the argument '{to_yellow(prefix+key)}' requires a value, which was not supplied",
+                f"the argument {colorize_text_t_option_name(prefix+key)} requires a value, which was not supplied",
                 "Cap.parse",
                 err,
             )
 
         parsed_map: Dict[str, _ParsedVal] = {}
+        # extract process
         for name, val in out["options"].items():
             key = self._get_key(name)
             parsed = parsed_map.get(
@@ -433,13 +475,19 @@ class Cap(Generic[K, T, U]):
                 },
             )
             opt = self._args[key]  # TODO:
-            val = unwrap_or(VALIDATOR.delimiter, ",").join(
-                [str(v) for v in val]
-            )
-            valid, val_get, err = VALIDATOR.extract(opt["type"], val, cvt=True)
-            # TODO: carry extract failed
-            parsed["val"].append([val_get])
             parsed["is_list"] = is_queue(opt["type"], allow_optional=True)
+            for v in val:
+                t = opt["type"]
+                valid, v_got, err = VALIDATOR.extract(t, v, cvt=True)
+                if valid:
+                    parsed["val"].append([v_got])
+                else:
+                    self._panic(
+                        f"invalid value {colorize_text_t_value(v)} for option {colorize_text_t_option_name(key)}:{colorize_text_t_type(t)}",
+                        "Cap.default_strict",
+                        CapInvalidValue(key, t, v),
+                    )
+            # # TODO: catch extract failed
             parsed_map[key] = parsed
 
         # callbacks
@@ -479,7 +527,7 @@ class Cap(Generic[K, T, U]):
                     }
                     if opt["val"] == None and not is_optional(opt["type"]):
                         self._panic(
-                            f"option '{to_yellow(key)}':{to_blue(opt['type'])} is required but it is missing",
+                            f"option {colorize_text_t_option_name(key)}:{colorize_text_t_type(opt['type'])} is required but it is missing",
                             "Cap.parse",
                             ArgsParserMissingArgument(key, opt["type"]),
                         )
