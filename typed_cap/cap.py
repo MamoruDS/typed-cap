@@ -196,33 +196,39 @@ def _helper_version_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
 def helper_arg_help(
     cap: "Cap",
     name: str = "help",
-    alias: Optional[VALID_ALIAS_CANDIDATES] = "h",
+    alias: Optional[VALID_ALIAS_CANDIDATES] = None,
 ):
     cap.add_argument(
         name,
         arg_type=Optional[bool],
         about="display the help text",
-        alias=alias,
+        alias=alias if alias != None else "h",
         callback=_helper_help_cb,
         callback_priority=0,
+        hide=True,
         prevent_overwrite=True,
+        ignore_invalid_alias=False if alias != None else True,
     )
+    cap._preset_helper_used = True
 
 
 def helper_arg_version(
     cap: "Cap",
     name: str = "version",
-    alias: Optional[VALID_ALIAS_CANDIDATES] = "V",
+    alias: Optional[VALID_ALIAS_CANDIDATES] = None,
 ):
     cap.add_argument(
         name,
         arg_type=Optional[bool],
         about="print version info and exit",
-        alias=alias,
+        alias=alias if alias != None else "V",
         callback=_helper_version_cb,
         callback_priority=2,
+        hide=True,
         prevent_overwrite=True,
+        ignore_invalid_alias=False if alias != None else True,
     )
+    cap._preset_helper_used = True
 
 
 class _Helpers(TypedDict):
@@ -266,6 +272,7 @@ class Cap(Generic[K, T, U]):
     _name: Optional[str]
     _version: Optional[str]
     _raw_err: bool
+    _preset_helper_used: bool
 
     def __init__(
         self,
@@ -278,6 +285,7 @@ class Cap(Generic[K, T, U]):
         self._name = None
         self._version = None
         self._raw_err = False
+        self._preset_helper_used = False
 
     def _get_key(self, name: str) -> Union[NoReturn, str]:
         for key, opt in self._args.items():
@@ -286,6 +294,22 @@ class Cap(Generic[K, T, U]):
             if opt["alias"] == name:
                 return key
         raise CapArgKeyNotFound(name)
+
+    def _set_alias(
+        self, key: str, alias: Optional[str]
+    ) -> Union[NoReturn, None]:
+        opt = self._args.get(key)
+        if opt == None:
+            raise CapArgKeyNotFound(key)
+        else:
+            if alias != None:
+                try:
+                    self._get_key(alias)
+                    raise CapInvalidAlias(key, alias)
+                except CapArgKeyNotFound:
+                    self._args[key] = {**opt, **{"alias": alias}}  # type: ignore
+            else:
+                self._args[key] = {**opt, **{"alias": None}}  # type: ignore
 
     def _panic(self, msg: str, alt_title: str, err: CAP_ERR) -> NoReturn:
         if self._raw_err:
@@ -298,15 +322,14 @@ class Cap(Generic[K, T, U]):
     def _parse_argstype(self):
         typed = typpeddict_parse(self._argstype)
         for key, t in typed.items():
-            self._args[key] = {
-                "val": None,
-                "type": t,
-                "about": None,
-                "alias": None,
-                "cb": None,
-                "cb_idx": 0,
-                "hide": False,
-            }
+            self.add_argument(
+                key,
+                arg_type=t,
+                callback_priority=0,
+                hide=False,
+                prevent_overwrite=False,
+                ignore_invalid_alias=False,
+            )
 
     def add_argument(
         self,
@@ -317,21 +340,31 @@ class Cap(Generic[K, T, U]):
         default: Optional[Any] = None,
         callback: Optional[ArgCallback] = None,
         callback_priority: int = 1,
+        hide: bool = False,
         prevent_overwrite: bool = False,
+        ignore_invalid_alias: bool = False,
     ) -> Cap:
         if self._args.get(key) != None and prevent_overwrite:
+            # TODO: sending any message?
             return self
-        else:
-            self._args[key] = {
-                "val": default,
-                "type": arg_type,
-                "about": about,
-                "alias": alias,
-                "cb": callback,
-                "cb_idx": callback_priority,
-                "hide": True,
-            }
-            return self
+        self._args[key] = {
+            "val": default,
+            "type": arg_type,
+            "about": about,
+            "alias": None,
+            "cb": callback,
+            "cb_idx": callback_priority,
+            "hide": hide,
+        }
+        if alias != None:
+            try:
+                self._set_alias(key, alias)
+            except CapInvalidAlias as err:
+                if ignore_invalid_alias:
+                    pass
+                else:
+                    raise err
+        return self
 
     def set_delimiter(self, delimiter: Optional[str]) -> Cap:
         self._delimiter = delimiter
@@ -395,14 +428,26 @@ class Cap(Generic[K, T, U]):
                 )
             except Exception as err:
                 raise Unhandled(
-                    desc=f"unknown issue: {err}", loc="Cap.default_strict"
+                    desc=f"unknown issue: {err.__class__.__name__}",
+                    loc="Cap.default_strict",
                 )
         return self
 
     def helper(self, helpers: Dict[K, ArgOpt]) -> Cap:
+        if self._preset_helper_used:
+            print(
+                "[warn] detected call of `Cap.helper` after call of preset helpers"
+            )
         for arg, opt in helpers.items():
             try:
+                alias = None
+                try:
+                    alias = opt.pop("alias")
+                except KeyError:
+                    pass
                 self._args[arg] = {**self._args[arg], **opt}  # type: ignore[misc]
+                self._set_alias(arg, alias)
+
             except KeyError as err:
                 name = str(err)
                 self._panic(
@@ -410,8 +455,13 @@ class Cap(Generic[K, T, U]):
                     "Cap.helper",
                     CapUnknownArg(name, "helper"),
                 )
+            except CapInvalidAlias as err:
+                raise err
             except Exception as err:
-                raise Unhandled(desc=f"unknown issue: {err}", loc="Cap.helper")
+                raise Unhandled(
+                    desc=f"unknown issue: {err.__class__.__name__}",
+                    loc="Cap.helper",
+                )
         return self
 
     def parse(
