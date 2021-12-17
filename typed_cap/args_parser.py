@@ -59,20 +59,20 @@ def args_parser(
             is_option = True
         return key, is_flag, is_option
 
-    def get_flag_key(k: str) -> Optional[str]:
-        for n, a in named_flags:
+    def _get_generic_key(k: str, valids: List[ArgNamed]) -> Optional[str]:
+        if not options.get("disable_hyphen_conversion", False):
+            # FIXME: checking potential repeated option names
+            k = k.replace("-", "_")
+        for n, a in valids:
             if n == k or a == k:
                 return n
         return None
 
+    def get_flag_key(k: str) -> Optional[str]:
+        return _get_generic_key(k, named_flags)
+
     def get_option_key(k: str) -> Optional[str]:
-        if not options.get("disable_hyphen_conversion", False):
-            k = k.replace("-", "_")
-        for n, a in named_options:
-            # FIXME: checking potential repeated option names
-            if n == k or a == k:
-                return n
-        return None
+        return _get_generic_key(k, named_options)
 
     def raise_unknown_flag(key: str) -> Union[NoReturn, None]:
         if not (
