@@ -1,8 +1,10 @@
+from types import GenericAlias
 from typing import (
     Any,
     Callable,
     Dict,
     List,
+    Literal,
     Optional,
     Tuple,
     Type,
@@ -32,6 +34,7 @@ VALID_RES = Tuple[bool, Optional[Any], Optional[Exception]]
 
 class TypeInf(TypedDict):
     t: Any
+    tt: Any
     c: Any
     v: Callable[["ValidVal", Type, Any, bool], VALID_RES]
 
@@ -52,7 +55,7 @@ class ValidVal:
         except Exception as e:
             raise e
 
-    def extract(self, t: Type, val: Any, cvt: bool):
+    def extract(self, t: Type, val: Any, cvt: bool) -> VALID_RES:
         REG = self.validators
         res: Optional[VALID_RES] = None
         if type(t) == str:
@@ -60,7 +63,11 @@ class ValidVal:
                 res = REG[t]["v"](self, REG[t]["t"], val, cvt)
         else:
             for _, t_inf in REG.items():
-                if t == t_inf["t"] or self._class_of(t) == t_inf["c"]:
+                if (
+                    t == t_inf["t"]
+                    or type(t) == t_inf["tt"]
+                    or self._class_of(t) == t_inf["c"]
+                ):
                     res = t_inf["v"](self, t, val, cvt)
                 else:
                     continue
@@ -235,33 +242,49 @@ VALIDATOR = ValidVal(
     {
         "bool": {
             "t": bool,
+            "tt": None,
             "c": None,
             "v": _valid_bool,
         },
-        "int": {"t": int, "c": None, "v": _valid_int},
+        "int": {
+            "t": int,
+            "tt": None,
+            "c": None,
+            "v": _valid_int,
+        },
         "float": {
             "t": float,
+            "tt": None,
             "c": None,
             "v": _valid_float,
         },
-        "str": {"t": str, "c": None, "v": _valid_str},
+        "str": {
+            "t": str,
+            "tt": None,
+            "c": None,
+            "v": _valid_str,
+        },
         "none": {
             "t": CLS_None,
+            "tt": None,
             "c": CLS_None,
             "v": _valid_none,
         },
         "union": {
             "t": None,
+            "tt": None,
             "c": CLS_Union,
             "v": _valid_union,
         },
         "queue": {
             "t": CLS_Queue,
+            "tt": GenericAlias,
             "c": CLS_Queue,
             "v": _valid_queue,
         },
         "literal": {
             "t": CLS_Literal,
+            "tt": None,
             "c": CLS_Literal,
             "v": _valid_literal,
         },
@@ -269,40 +292,33 @@ VALIDATOR = ValidVal(
 )
 
 
-def is_queue(t: Type, allow_optional: bool = False) -> bool:
-    if t == CLS_Queue:
-        return True
-    elif get_origin(t) in [tuple, list]:
-        return True
-    else:
-        try:
-            can = get_type_candidates(t)
-            if allow_optional and (CLS_None in can):
-                # TODO: len(can) == 2?
-                # return CLS_Queue in can
-                for c in can:
-                    try:
-                        if c.__class__ == CLS_Queue:
-                            return True
-                        elif get_origin(c) in [tuple, list]:
-                            return True
-                        else:
-                            return False
-                    except Exception:
-                        return False
-            else:
-                return False
-        except Exception:
-            pass
-        return False
-
-
-def is_optional(t: Type) -> bool:
+def get_optional_candidates(t: Type) -> Optional[Tuple]:
     try:
-        can = get_type_candidates(t)
-        return CLS_None in can
+        can = list(get_type_candidates(t))
+        idx = can.index(CLS_None)
+        can.pop(idx)
+        return tuple(can)
     except Exception:
-        return False
+        pass
+    return None
+
+
+def get_queue_type(
+    t: Type, allow_optional: bool = False
+) -> Optional[Literal["list", "tuple"]]:
+    if t in [tuple, list]:
+        return t.__name__
+    ot = get_origin(t)
+    if ot in [tuple, list]:
+        return ot.__name__  # type: ignore
+    elif ot == Union and allow_optional:
+        can = get_optional_candidates(t)
+        if can != None and len(can) == 1:
+            _t = can[0]
+            return get_queue_type(_t)
+        else:
+            pass
+    return None
 
 
 OT = TypeVar("OT")

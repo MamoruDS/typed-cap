@@ -22,9 +22,9 @@ from typed_cap.types import (
 from typed_cap.args_parser import args_parser
 from typed_cap.typing import (
     VALIDATOR,
+    get_optional_candidates,
+    get_queue_type,
     get_type_candidates,
-    is_optional,
-    is_queue,
     typpeddict_parse,
 )
 from typed_cap.utils import (
@@ -43,6 +43,7 @@ from typing import (
     Dict,
     Generic,
     List,
+    Literal,
     NoReturn,
     Optional,
     Tuple,
@@ -69,7 +70,7 @@ class _ArgOpt(TypedDict):
 class _ParsedVal(TypedDict):
     val: List[List[Any]]
     default_val: Optional[Any]
-    is_list: bool
+    queue_type: Optional[Literal["list", "tuple"]]
 
 
 T = TypeVar("T", bound=TypedDict)
@@ -101,8 +102,12 @@ class Parsed(Generic[T]):
             pv = flatten(pv)
             if len(pv) == 0:
                 val[key] = parsed["default_val"]
+            elif parsed["queue_type"] == "list":
+                val[key] = flatten(pv)
+            elif parsed["queue_type"] == "tuple":
+                val[key] = pv[-1]
             else:
-                val[key] = flatten(pv) if parsed["is_list"] else pv[-1]
+                val[key] = pv[-1]
         return val  # type: ignore
 
     @property
@@ -516,19 +521,22 @@ class Cap(Generic[K, T, U]):
         # extract process
         for name, val in out["options"].items():
             key = self._get_key(name)
-            parsed = parsed_map.get(
+            parsed: _ParsedVal = parsed_map.get(
                 key,
                 {
                     "val": [],
                     "default_val": None,
-                    "is_list": False,
+                    "queue_type": None,
                 },
             )
             opt = self._args[key]  # TODO:
-            parsed["is_list"] = is_queue(opt["type"], allow_optional=True)
+            parsed["queue_type"] = get_queue_type(
+                opt["type"], allow_optional=True
+            )
             for v in val:
                 t = opt["type"]
                 valid, v_got, err = VALIDATOR.extract(t, v, cvt=True)
+                # TODO: catch extract failed
                 if valid:
                     parsed["val"].append([v_got])
                 else:
@@ -537,7 +545,6 @@ class Cap(Generic[K, T, U]):
                         "Cap.default_strict",
                         CapInvalidValue(key, t, v),
                     )
-            # # TODO: catch extract failed
             parsed_map[key] = parsed
 
         # callbacks
@@ -573,9 +580,14 @@ class Cap(Generic[K, T, U]):
                         "default_val": opt[
                             "val"
                         ],  # TODO: checking typeof default value
-                        "is_list": is_queue(opt["type"]),
+                        "queue_type": get_queue_type(
+                            opt["type"], allow_optional=True
+                        ),
                     }
-                    if opt["val"] == None and not is_optional(opt["type"]):
+                    if (
+                        opt["val"] == None
+                        and get_optional_candidates(opt["type"]) == None
+                    ):
                         self._panic(
                             f"option {colorize_text_t_option_name(key)}:{colorize_text_t_type(opt['type'])} is required but it is missing",
                             "Cap.parse",
