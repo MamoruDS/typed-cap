@@ -30,6 +30,46 @@ def test_flag_multi():
     assert res.val["all"] == True
 
 
+def test_flag_alias_A():
+    class T(TypedDict):
+        silent: Optional[bool]
+        human_readable: Optional[bool]
+        all: Optional[bool]
+
+    cap = Cap(T)
+    cap.helper(
+        {
+            "silent": {"alias": "s"},
+            "human_readable": {"alias": "h"},
+            "all": {"alias": "a"},
+        }
+    )
+    res = cap.parse(cmd("-s -a"))
+    assert res.val["silent"] == True
+    assert res.val["human_readable"] == None
+    assert res.val["all"] == True
+
+
+def test_flag_alias_B():
+    class T(TypedDict):
+        silent: Optional[bool]
+        human_readable: Optional[bool]
+        all: Optional[bool]
+
+    cap = Cap(T)
+    cap.helper(
+        {
+            "silent": {"alias": "s"},
+            "human_readable": {"alias": "h"},
+            "all": {"alias": "a"},
+        }
+    )
+    res = cap.parse(cmd("-ah"))
+    assert res.val["silent"] == None
+    assert res.val["human_readable"] == True
+    assert res.val["all"] == True
+
+
 def test_option_str_A():
     class T(TypedDict):
         name: str
