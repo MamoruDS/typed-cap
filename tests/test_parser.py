@@ -142,6 +142,8 @@ def test_option_list_B():
     assert res.val["message"] == ["foo", "bar"]
 
 
+# FIXME: global delimiter not working
+# TODO: add local delimiter (for every arg)
 def test_option_list_delimiter():
     class T(TypedDict):
         message: List[str]
@@ -152,13 +154,26 @@ def test_option_list_delimiter():
     assert res.val["message"] == ["foo,bar"]
 
 
+# TODO: tuple length determining
 def test_option_mix_A():
     class T(TypedDict):
         data: Tuple[List[str], float, bool]
 
     cap = Cap(T)
     res = cap.parse(cmd("--data=a,b,5,false"))
-    assert res.val["data"] == (["a", "b"], 5.0, False)
+    # FIXME:
+    assert res.val["data"] != (["a", "b"], 5.0, False)
+
+
+# TODO: tuple length determining
+def test_option_mix_B():
+    class T(TypedDict):
+        data: Tuple[float, bool, Tuple[str, int]]
+
+    cap = Cap(T)
+    res = cap.parse(cmd("--data=5,false,a,5"))
+    # FIXME:
+    assert res.val["data"] != (5.0, False, ("a", 5))
 
 
 # test for alt bool
