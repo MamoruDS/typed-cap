@@ -46,6 +46,7 @@ from typing import (
     Literal,
     NoReturn,
     Optional,
+    Protocol,
     Tuple,
     Type,
     TypeVar,
@@ -236,9 +237,19 @@ def helper_arg_version(
     cap._preset_helper_used = True
 
 
+class _Helper_fn(Protocol):
+    def __call__(
+        self,
+        cap: "Cap",
+        name: str,
+        alias: Optional[VALID_ALIAS_CANDIDATES] = None,
+    ) -> None:
+        pass
+
+
 class _Helpers(TypedDict):
-    arg_help: Callable[["Cap", str, Optional[VALID_ALIAS_CANDIDATES]], None]
-    arg_version: Callable[["Cap", str, Optional[VALID_ALIAS_CANDIDATES]], None]
+    arg_help: _Helper_fn
+    arg_version: _Helper_fn
 
 
 helpers: _Helpers = {
