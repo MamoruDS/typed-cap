@@ -108,13 +108,14 @@ class T(TypedDict):
     strings: List[str]
 ```
 
--   supports alias
-    similar to flags
+-   supports adding alias
     ```python
     cap.helper(
-        { "integer": "i" },
-        { "floating": "f" },
-        { "strings": "s" },
+        {
+            {"integer": {"alias": "i"}},
+            {"floating": {"alias": "f"}},
+            {"strings": {"alias": "s"}},
+        }
     )
     ```
     `-i 1` `-i=1` `--integer 1` `--integer=1`
@@ -127,20 +128,34 @@ class T(TypedDict):
 
 ### Typing
 
-Cap takes an arbitrary `TypedDict` class (`T`) as input, processes the resulting arguments by the registered parser in the parse method, and finally returns a `dict` of type `T` to the user. The nice thing about this is that all the parsed arguments you get will be typing robust and can be supported by auto-completion, type checking and other features in modern editors.
+Cap accepts an arbitrary [TypedDict](https://docs.python.org/3.9/library/typing.html#typing.TypedDict) instance `T` to get the values that satisfy the predefined parameters and their types via the built-in validator. After parser execution you will get a `dict` that strictly satisfies type `T`. The nice thing about this is that you can leverage features such as auto-completion and type checking from modern editors.
 
 <p align="center">
     <img width="550px" src="https://github.com/MamoruDS/typed-cap/raw/main/screenshots/clip00.gif">
 </p>
 
-The preset parser can help you perform basic parse functions, and the supported types include `str`, `bool`, `int` and `float`. In addition, Cap will handle `Optional` and `List` for these types (`list` in python 3.9). cap is still in its early stages, and support for `Tuple` and others will be refined in subsequent updates.
+The preset validator currently supports:
 
-Want more type support? Use `set_parser` to make Cap support your custom types.
+-   `bool`
+-   `int`
+-   `float`
+-   `str`
+-   `NoneType`
+-   `Union`
+    including `Optional` (e.g. `Optional[int]` equals `Union[int, None]`)
+-   queue
+    `list` and `tuple`
+-   `Literal`
+
+Check the supported types in the preset validator from [here](https://github.com/MamoruDS/typed-cap/blob/dev/typed_cap/typing.py#L241-L292).
+
+#### Custom validator
+
+TODO: build your validator with `ValidVal`
 
 ```python
-Cap.set_parser(
-        self, type_name: str, parser: Parser, allow_list: bool
-    ) -> Cap
+from typed_cap.typing import ValidVal
+...
 ```
 
 ### Helpers
@@ -209,7 +224,7 @@ using `Cap.raw_exception` to expose exceptions
 
 ## Examples
 
-### Baisc Example
+### Basic Example
 
 ```python
 from typed_cap import Cap
@@ -239,14 +254,14 @@ python demo.py --all --total /opt
 ### Advance Example
 
 ```python
-from typed_cap import Cap
+from typed_cap import Cap, helpers
 from typing import Optional, TypedDict
 
 
 class T(TypedDict):
     all: bool
     total: bool
-    max_depth: inta
+    max_depth: int
     human_readable: Optional[bool]
 
 
@@ -275,6 +290,7 @@ cap.helper(
         },
     }
 )
+helpers["arg_help"](cap, 'help')
 args = cap.parse()
 
 print(args.args)
