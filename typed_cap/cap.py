@@ -467,13 +467,12 @@ class Cap(Generic[K, T, U]):
             )
         for arg, opt in helpers.items():
             try:
-                alias = None
                 try:
                     alias = opt.pop("alias")
+                    self._set_alias(arg, alias)
                 except KeyError:
                     pass
                 self._args[arg] = {**self._args[arg], **opt}  # type: ignore[misc]
-                self._set_alias(arg, alias)
 
             except KeyError as err:
                 name = str(err)
