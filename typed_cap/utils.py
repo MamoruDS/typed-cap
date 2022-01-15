@@ -80,8 +80,8 @@ def split_by_length(
                     text = join(splice(list(text), i + length, 1), "")
                 else:
                     m = re.match(r"(?P<S>\s{1})?\w{2,}", tail)
-                    if m != None:
-                        if m.group("S") != None:
+                    if m is not None:
+                        if m.group("S") is not None:
                             text = join(
                                 splice(list(text), i + length - 2, 0, " "), ""
                             )
@@ -118,7 +118,7 @@ D = TypeVar("D")
 
 
 def unwrap_or(d: Optional[D], alt: D) -> D:
-    if d == None:
+    if d is None:
         return alt
     else:
         return d

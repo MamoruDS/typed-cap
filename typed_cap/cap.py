@@ -119,7 +119,7 @@ class Parsed(Generic[T]):
 
     def count(self, name: str) -> int:
         parsed = self._parsed_map.get(name)
-        if parsed != None:
+        if parsed is not None:
             return len(parsed["val"])
         else:
             panic(f'Parsed.count: cannot find option with name "{name}"')
@@ -154,7 +154,7 @@ def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
     lns: List[Tuple[int, str]] = []
     INDENT_SIZE = 4
     if v[0][0]:
-        if c._about != None:
+        if c._about is not None:
             lns.append((0, c._about))
             lns.append((0, ""))
         lns.append((0, "OPTIONS:"))
@@ -194,7 +194,7 @@ def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
 def _helper_version_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
     if v[0][0]:
         ver = unwrap_or(c._version, "unknown version")
-        if c._name != None:
+        if c._name is not None:
             print(f"{c._name} {ver}")
         else:
             print(ver)
@@ -210,12 +210,12 @@ def helper_arg_help(
         name,
         arg_type=Optional[bool],
         about="display the help text",
-        alias=alias if alias != None else "h",
+        alias=alias if alias is not None else "h",
         callback=_helper_help_cb,
         callback_priority=0,
         hide=True,
         prevent_overwrite=True,
-        ignore_invalid_alias=False if alias != None else True,
+        ignore_invalid_alias=False if alias is not None else True,
     )
     cap._preset_helper_used = True
 
@@ -229,12 +229,12 @@ def helper_arg_version(
         name,
         arg_type=Optional[bool],
         about="print version info and exit",
-        alias=alias if alias != None else "V",
+        alias=alias if alias is not None else "V",
         callback=_helper_version_cb,
         callback_priority=2,
         hide=True,
         prevent_overwrite=True,
-        ignore_invalid_alias=False if alias != None else True,
+        ignore_invalid_alias=False if alias is not None else True,
     )
     cap._preset_helper_used = True
 
@@ -317,10 +317,10 @@ class Cap(Generic[K, T, U]):
         self, key: str, alias: Optional[str]
     ) -> Union[NoReturn, None]:
         opt = self._args.get(key)
-        if opt == None:
+        if opt is None:
             raise CapArgKeyNotFound(key)
         else:
-            if alias != None:
+            if alias is not None:
                 try:
                     self._get_key(alias)
                     raise CapInvalidAlias(key, alias)
@@ -371,7 +371,7 @@ class Cap(Generic[K, T, U]):
         prevent_overwrite: bool = False,
         ignore_invalid_alias: bool = False,
     ) -> Cap:
-        if self._args.get(key) != None and prevent_overwrite:
+        if self._args.get(key) is not None and prevent_overwrite:
             # TODO: sending any message?
             return self
         self._args[key] = {
@@ -383,7 +383,7 @@ class Cap(Generic[K, T, U]):
             "cb_idx": callback_priority,
             "hide": hide,
         }
-        if alias != None:
+        if alias is not None:
             try:
                 self._set_alias(key, alias)
             except CapInvalidAlias as err:
@@ -400,7 +400,7 @@ class Cap(Generic[K, T, U]):
     def set_callback(
         self, key: str, callback: ArgCallback, priority: int = 1
     ) -> Cap:
-        if self._args.get(key) != None:
+        if self._args.get(key) is not None:
             self._args[key]["cb"] = callback
             self._args[key]["cb_idx"] = priority
         else:
@@ -571,20 +571,20 @@ class Cap(Generic[K, T, U]):
         # callbacks
         cb_list: List[Tuple[str, int]] = []
         for key, opt in self._args.items():
-            if opt["cb"] != None:
+            if opt["cb"] is not None:
                 cb_list.append((key, opt["cb_idx"]))
         cb_list = sorted(cb_list, key=lambda x: x[1])
         cb_list.reverse()
         for key, _ in cb_list:
             parsed = parsed_map.get(key)
-            if parsed == None:
+            if parsed is None:
                 continue
             else:
                 if len(parsed["val"]) >= 0:
                     try:
                         arg = self._args[key]
                         cb = arg["cb"]
-                        if cb != None:
+                        if cb is not None:
                             parsed_map[key]["val"] = cb(self, parsed["val"])
                     except KeyError:
                         continue
@@ -592,10 +592,10 @@ class Cap(Generic[K, T, U]):
         # assign default value to empty field
         for key, opt in self._args.items():
             if opt["hide"]:
-                if parsed_map.get(key) != None:
+                if parsed_map.get(key) is not None:
                     parsed_map.pop(key)
             else:
-                if parsed_map.get(key) == None:
+                if parsed_map.get(key) is None:
                     parsed_map[key] = {
                         "val": [],
                         "default_val": opt[
@@ -606,8 +606,8 @@ class Cap(Generic[K, T, U]):
                         ),
                     }
                     if (
-                        opt["val"] == None
-                        and get_optional_candidates(opt["type"]) == None
+                        opt["val"] is None
+                        and get_optional_candidates(opt["type"]) is None
                     ):
                         self._panic(
                             f"option {colorize_text_t_option_name(key)}:{colorize_text_t_type(opt['type'])} is required but it is missing",

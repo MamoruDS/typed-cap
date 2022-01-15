@@ -84,7 +84,7 @@ class ValidVal:
         REG = self.validators
         res: Optional[VALID_RES] = None
         if type(t) == str:
-            if REG.get(t) != None:
+            if REG.get(t) is not None:
                 res = REG[t]["v"](self, REG[t]["t"], val, cvt)
         else:
             for _, t_inf in REG.items():
@@ -96,7 +96,7 @@ class ValidVal:
                     res = t_inf["v"](self, t, val, cvt)
                 else:
                     continue
-        if res == None:
+        if res is None:
             # TODO:
             print(f"\t> t.__class__: {t.__class__}")
             print(f"\t> type(t): {type(t)}")
@@ -237,12 +237,12 @@ def _valid_queue(vv: ValidVal, t: CLS_Queue, val: Any, cvt: bool) -> VALID_RES:
                 else:
                     arr = None
 
-        if arr != None:
+        if arr is not None:
             b = True
             v = arr
             if loc_type == tuple:
                 v = tuple(v)
-    elif cvt and type(val) == str and vv.delimiter != None:
+    elif cvt and type(val) == str and vv.delimiter is not None:
         arr = val.split(vv.delimiter)
         if loc_type == tuple:
             arr = tuple(arr)
@@ -345,7 +345,7 @@ def get_queue_type(
         return ot.__name__  # type: ignore
     elif ot == Union and allow_optional:
         can = get_optional_candidates(t)
-        if can != None and len(can) == 1:
+        if can is not None and len(can) == 1:
             _t = can[0]
             return get_queue_type(_t)
         else:

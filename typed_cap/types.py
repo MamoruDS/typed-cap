@@ -209,11 +209,11 @@ class Unhandled(Exception):
     ) -> None:
         self.desc = desc
         self.loc = loc
-        if loc == None:
+        if loc is None:
             loc = ""
         else:
             loc = f" in `{loc}`"
-        if desc == None:
+        if desc is None:
             desc = ""
         else:
             desc = "\n\t" + desc

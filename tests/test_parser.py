@@ -14,7 +14,7 @@ def test_flag():
     assert res.val["silent"] == True
 
     res = cap.parse(cmd(""))
-    assert res.val["silent"] == None
+    assert res.val["silent"] is None
 
 
 def test_flag_multi():
@@ -26,7 +26,7 @@ def test_flag_multi():
     cap = Cap(T)
     res = cap.parse(cmd("--silent --all"))
     assert res.val["silent"] == True
-    assert res.val["human_readable"] == None
+    assert res.val["human_readable"] is None
     assert res.val["all"] == True
 
 
@@ -46,7 +46,7 @@ def test_flag_alias_A():
     )
     res = cap.parse(cmd("-s -a"))
     assert res.val["silent"] == True
-    assert res.val["human_readable"] == None
+    assert res.val["human_readable"] is None
     assert res.val["all"] == True
 
 
@@ -65,7 +65,7 @@ def test_flag_alias_B():
         }
     )
     res = cap.parse(cmd("-ah"))
-    assert res.val["silent"] == None
+    assert res.val["silent"] is None
     assert res.val["human_readable"] == True
     assert res.val["all"] == True
 
