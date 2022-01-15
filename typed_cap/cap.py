@@ -22,10 +22,12 @@ from typed_cap.types import (
 from typed_cap.args_parser import args_parser
 from typed_cap.typing import (
     VALIDATOR,
+    AnnoExtra,
     get_optional_candidates,
     get_queue_type,
     get_type_candidates,
     typpeddict_parse,
+    typpeddict_parse_extra,
 )
 from typed_cap.utils import (
     flatten,
@@ -296,12 +298,12 @@ class Cap(Generic[K, T, U]):
     ) -> None:
         self._argstype = argstype
         self._args = {}
-        self._parse_argstype()
         self._about = None
         self._name = None
         self._version = None
         self._raw_err = False
         self._preset_helper_used = False
+        self._parse_argstype()
 
     def _get_key(self, name: str) -> Union[NoReturn, str]:
         for key, opt in self._args.items():
@@ -336,7 +338,13 @@ class Cap(Generic[K, T, U]):
             panic(err_msg)
 
     def _parse_argstype(self):
-        typed = typpeddict_parse(self._argstype)
+        typed: Dict[str, Type]
+        extra: Optional[Dict[str, AnnoExtra]] = None
+        if sys.version_info.minor < 9:
+            typed = typpeddict_parse(self._argstype)
+        else:
+            typed, extra = typpeddict_parse_extra(self._argstype)
+
         for key, t in typed.items():
             self.add_argument(
                 key,
@@ -346,6 +354,9 @@ class Cap(Generic[K, T, U]):
                 prevent_overwrite=False,
                 ignore_invalid_alias=False,
             )
+        if extra is not None:
+            _ext: Dict[K, AnnoExtra] = extra  # type: ignore
+            self.helper({k: v.to_helper() for k, v in _ext.items()})
 
     def add_argument(
         self,
