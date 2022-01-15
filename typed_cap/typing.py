@@ -400,3 +400,19 @@ def typpeddict_parse(t: Type) -> Dict[str, Type]:
     for key in keys_opt:
         typed[key] = get_t(key, False)
     return typed
+
+
+def typpeddict_parse_extra(t: Type):
+    key_dict = get_type_hints(t, include_extras=True)
+    extra: Dict[str, AnnoExtra] = {}
+    for key, anno in key_dict.items():
+        if get_origin(anno) is not Annotated:
+            pass
+        else:
+            _, *anno_args = get_args(anno)
+            if isinstance(anno_args[0], AnnoExtra):
+                extra[key] = anno_args[0]
+            else:
+                pass
+                # TODO: warning or error msg?
+    return typpeddict_parse(t), extra
