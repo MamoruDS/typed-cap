@@ -1,5 +1,6 @@
 from types import GenericAlias
 from typing import (
+    Annotated,
     Any,
     Callable,
     Dict,
@@ -13,6 +14,7 @@ from typing import (
     Union,
     get_args,
     get_origin,
+    get_type_hints,
 )
 
 from typing import (
@@ -22,6 +24,8 @@ from typing import (
     _UnionGenericAlias,  # type: ignore
 )
 
+from typed_cap.types import ArgOpt, VALID_ALIAS_CANDIDATES
+
 CLS_Literal: Type = _LiteralGenericAlias
 CLS_None: Type = type(None)
 CLS_Queue: Type = _GenericAlias
@@ -30,6 +34,27 @@ CLS_Union: Type = _UnionGenericAlias
 
 
 VALID_RES = Tuple[bool, Optional[Any], Optional[Exception]]
+
+
+class AnnoExtra:
+    about: Optional[str] = None
+    alias: Optional[VALID_ALIAS_CANDIDATES] = None
+
+    def __init__(
+        self,
+        about: Optional[str],
+        alias: Optional[VALID_ALIAS_CANDIDATES],
+    ) -> None:
+        self.alias = alias
+        self.about = about
+
+    def to_helper(self) -> ArgOpt:
+        d: ArgOpt = {}
+        if self.about is not None:
+            d["about"] = self.about
+        if self.alias is not None:
+            d["alias"] = self.alias
+        return d
 
 
 class TypeInf(TypedDict):
@@ -351,7 +376,7 @@ def get_type_candidates(t: Type[OT]) -> Tuple[Type[OT]]:
 def typpeddict_parse(t: Type) -> Dict[str, Type]:
     if type(t) != CLS_TypedDict:
         raise Exception("t should a TypedDict for parsing")  # TODO:
-    key_dict: Dict[str, Type] = t.__annotations__
+    key_dict: Dict[str, Type] = get_type_hints(t)
     typed: Dict[str, Type] = dict(((k, CLS_None) for k in key_dict.keys()))
 
     def get_t(key: str, required: bool) -> Type:
