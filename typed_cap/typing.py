@@ -106,6 +106,13 @@ class ValidVal:
             return res
 
 
+def annotation_extra(
+    alias: Optional[VALID_ALIAS_CANDIDATES] = None,
+    about: Optional[str] = None,
+) -> AnnoExtra:
+    return AnnoExtra(about, alias)
+
+
 def _valid_none(_vv: ValidVal, t: CLS_None, val: Any, _cvt: bool) -> VALID_RES:
     b = False
     v = None
