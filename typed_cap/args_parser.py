@@ -49,12 +49,12 @@ def args_parser(
         is_option = False
         #
         _key = get_flag_key(k)
-        if _key != None:
+        if _key is not None:
             key = _key
             is_flag = True
         #
         _key = get_option_key(k)
-        if _key != None:
+        if _key is not None:
             key = _key
             is_option = True
         return key, is_flag, is_option
@@ -92,38 +92,38 @@ def args_parser(
         if len(argv) == 0:
             return False
         else:
-            return reg.match(argv[0]) == None
+            return reg.match(argv[0]) is None
 
     def safe_append(k: str, t: Union[str, bool]):
-        if parsed.get(k) == None:
+        if parsed.get(k) is None:
             parsed[k] = []
         parsed[k].append(t)
 
     while len(argv):
         arg = argv.pop(0)
         m = reg.match(arg)
-        if m != None:
+        if m is not None:
             opt: Optional[str]
             opt = m.group("flags")
-            if opt != None:
+            if opt is not None:
                 for f in opt:
                     f_k = get_flag_key(f)
-                    if f_k == None:
+                    if f_k is None:
                         raise_unknown_flag(f)
                     else:
                         safe_append(f_k, True)
                 continue
             opt = m.group("alias")
             key = "_"  # checking potential unbound
-            if opt != None:
+            if opt is not None:
                 key = opt
             opt = m.group("option")
-            if opt != None:
+            if opt is not None:
                 key = opt
             val = m.group("val")
             if key == "_":
                 raise Exception(f"unknown unbound issue for '{key}'")
-            if val != None:
+            if val is not None:
                 """
                 matched option with val (`-o=sth` or `--opt==sth`)
                 """

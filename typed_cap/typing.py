@@ -1,5 +1,6 @@
 from types import GenericAlias
 from typing import (
+    Annotated,
     Any,
     Callable,
     Dict,
@@ -13,6 +14,7 @@ from typing import (
     Union,
     get_args,
     get_origin,
+    get_type_hints,
 )
 
 from typing import (
@@ -22,6 +24,8 @@ from typing import (
     _UnionGenericAlias,  # type: ignore
 )
 
+from typed_cap.types import ArgOpt, VALID_ALIAS_CANDIDATES
+
 CLS_Literal: Type = _LiteralGenericAlias
 CLS_None: Type = type(None)
 CLS_Queue: Type = _GenericAlias
@@ -30,6 +34,27 @@ CLS_Union: Type = _UnionGenericAlias
 
 
 VALID_RES = Tuple[bool, Optional[Any], Optional[Exception]]
+
+
+class AnnoExtra:
+    about: Optional[str] = None
+    alias: Optional[VALID_ALIAS_CANDIDATES] = None
+
+    def __init__(
+        self,
+        about: Optional[str],
+        alias: Optional[VALID_ALIAS_CANDIDATES],
+    ) -> None:
+        self.alias = alias
+        self.about = about
+
+    def to_helper(self) -> ArgOpt:
+        d: ArgOpt = {}
+        if self.about is not None:
+            d["about"] = self.about
+        if self.alias is not None:
+            d["alias"] = self.alias
+        return d
 
 
 class TypeInf(TypedDict):
@@ -59,7 +84,7 @@ class ValidVal:
         REG = self.validators
         res: Optional[VALID_RES] = None
         if type(t) == str:
-            if REG.get(t) != None:
+            if REG.get(t) is not None:
                 res = REG[t]["v"](self, REG[t]["t"], val, cvt)
         else:
             for _, t_inf in REG.items():
@@ -71,7 +96,7 @@ class ValidVal:
                     res = t_inf["v"](self, t, val, cvt)
                 else:
                     continue
-        if res == None:
+        if res is None:
             # TODO:
             print(f"\t> t.__class__: {t.__class__}")
             print(f"\t> type(t): {type(t)}")
@@ -79,6 +104,13 @@ class ValidVal:
             raise Exception("not found")
         else:
             return res
+
+
+def annotation_extra(
+    alias: Optional[VALID_ALIAS_CANDIDATES] = None,
+    about: Optional[str] = None,
+) -> AnnoExtra:
+    return AnnoExtra(about, alias)
 
 
 def _valid_none(_vv: ValidVal, t: CLS_None, val: Any, _cvt: bool) -> VALID_RES:
@@ -205,12 +237,12 @@ def _valid_queue(vv: ValidVal, t: CLS_Queue, val: Any, cvt: bool) -> VALID_RES:
                 else:
                     arr = None
 
-        if arr != None:
+        if arr is not None:
             b = True
             v = arr
             if loc_type == tuple:
                 v = tuple(v)
-    elif cvt and type(val) == str and vv.delimiter != None:
+    elif cvt and type(val) == str and vv.delimiter is not None:
         arr = val.split(vv.delimiter)
         if loc_type == tuple:
             arr = tuple(arr)
@@ -313,7 +345,7 @@ def get_queue_type(
         return ot.__name__  # type: ignore
     elif ot == Union and allow_optional:
         can = get_optional_candidates(t)
-        if can != None and len(can) == 1:
+        if can is not None and len(can) == 1:
             _t = can[0]
             return get_queue_type(_t)
         else:
@@ -351,7 +383,7 @@ def get_type_candidates(t: Type[OT]) -> Tuple[Type[OT]]:
 def typpeddict_parse(t: Type) -> Dict[str, Type]:
     if type(t) != CLS_TypedDict:
         raise Exception("t should a TypedDict for parsing")  # TODO:
-    key_dict: Dict[str, Type] = t.__annotations__
+    key_dict: Dict[str, Type] = get_type_hints(t)
     typed: Dict[str, Type] = dict(((k, CLS_None) for k in key_dict.keys()))
 
     def get_t(key: str, required: bool) -> Type:
@@ -368,3 +400,19 @@ def typpeddict_parse(t: Type) -> Dict[str, Type]:
     for key in keys_opt:
         typed[key] = get_t(key, False)
     return typed
+
+
+def typpeddict_parse_extra(t: Type):
+    key_dict = get_type_hints(t, include_extras=True)
+    extra: Dict[str, AnnoExtra] = {}
+    for key, anno in key_dict.items():
+        if get_origin(anno) is not Annotated:
+            pass
+        else:
+            _, *anno_args = get_args(anno)
+            if isinstance(anno_args[0], AnnoExtra):
+                extra[key] = anno_args[0]
+            else:
+                pass
+                # TODO: warning or error msg?
+    return typpeddict_parse(t), extra

@@ -17,6 +17,21 @@ pip install typed_cap
 ### Quick Example
 
 ```python
+# python>=3.9 only
+from typed_cap import Cap, helpers, annotation_extra as anno
+from typing import Annotated, List, Optional, TypedDict
+
+
+class T(TypedDict):
+    verbose: Annotated[bool, anno("v", "verbose output")]
+    message: Annotated[List[str], anno("m", about="your messages")]
+    size: Annotated[Optional[float], anno(alias="n", about="optional number")]
+
+
+cap = Cap(T)
+```
+
+```python
 from typed_cap import Cap, helpers
 from typing import List, Optional, TypedDict
 
