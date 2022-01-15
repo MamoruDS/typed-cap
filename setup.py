@@ -2,7 +2,7 @@ import setuptools
 import sys
 
 #
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 
 #
 py_ver_range_min = 8
