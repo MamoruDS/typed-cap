@@ -1,6 +1,7 @@
 # typed-cap
 
 [![pypi](https://img.shields.io/pypi/v/typed-cap?style=flat-square)](https://pypi.org/project/typed-cap/)
+[![style](https://img.shields.io/badge/code%20style-black-black?style=flat-square)](https://github.com/psf/black)
 
 Cap is a python **C**ommand-line **A**rgument **P**arser that provides **typing** support. Using Cap requires less code to generate a more robust parser.
 
