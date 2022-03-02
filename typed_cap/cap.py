@@ -476,7 +476,7 @@ class Cap(Generic[K, T, U]):
                 "[warn] `default` has been ignore since cap using an object-based argstype"
             )
         else:
-            for arg, val in value.items(): # type: ignore
+            for arg, val in value.items():  # type: ignore
                 try:
                     t = self._args[arg]["type"]
                     valid, _, _ = VALIDATOR.extract(t, val, cvt=False)
@@ -633,6 +633,10 @@ class Cap(Generic[K, T, U]):
                         continue
 
         # assign default value to empty field
+        args_obj: Optional[T] = None
+        T_based = is_T_based(self._argstype)
+        if T_based is object:
+            args_obj = self._argstype()  # type: ignore
         for key, opt in self._args.items():
             if opt["hide"]:
                 if parsed_map.get(key) is not None:
@@ -649,7 +653,18 @@ class Cap(Generic[K, T, U]):
                         ),
                     }
                     if (
-                        opt["val"] is None
+                        parsed_map[key]["default_val"] is None
+                        and T_based is object
+                        and args_obj is not None
+                    ):
+                        try:
+                            parsed_map[key][
+                                "default_val"
+                            ] = args_obj.__getattribute__(key)
+                        except AttributeError:
+                            pass
+                    if (
+                        parsed_map[key]["default_val"] is None
                         and get_optional_candidates(opt["type"]) is None
                     ):
                         self._panic(
@@ -658,4 +673,4 @@ class Cap(Generic[K, T, U]):
                             ArgsParserMissingArgument(key, opt["type"]),
                         )
 
-        return Parsed(out["args"], parsed_map)
+        return Parsed(self._argstype, out["args"], parsed_map, args_obj)
