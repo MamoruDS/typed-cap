@@ -26,8 +26,8 @@ from typed_cap.typing import (
     get_optional_candidates,
     get_queue_type,
     get_type_candidates,
-    typpeddict_parse,
-    typpeddict_parse_extra,
+    argstyping_parse as typpeddict_parse,
+    argstyping_parse_extra as typpeddict_parse_extra,
 )
 from typed_cap.utils import (
     flatten,
@@ -77,6 +77,21 @@ class _ParsedVal(TypedDict):
 
 
 T = TypeVar("T", bound=TypedDict)
+
+
+class _GVCS(Generic[T]):
+    _t_based: Union[Type[dict], Type[object]]
+    _gvc: T
+
+    def __init__(self, t: Union[Type[dict], Type[object]], val_ctr: T) -> None:
+        self._t_based = t
+        self._gvc = val_ctr
+
+    def setVal(self, key: str, val: Any):
+        if self._t_based is dict:
+            self._gvc[key] = val  # type: ignore
+        elif self._t_based is object:
+            self._gvc.__setattr__(key, val)
 
 
 class Parsed(Generic[T]):
