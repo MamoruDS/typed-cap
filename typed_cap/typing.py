@@ -1,9 +1,13 @@
+from inspect import isclass
+from typed_cap.types import ArgOpt, VALID_ALIAS_CANDIDATES
+from typed_cap.utils import is_T_based
 from types import GenericAlias
 from typing import (
     Annotated,
     Any,
     Callable,
     Dict,
+    Iterable,
     List,
     Literal,
     Optional,
@@ -24,7 +28,6 @@ from typing import (
     _UnionGenericAlias,  # type: ignore
 )
 
-from typed_cap.types import ArgOpt, VALID_ALIAS_CANDIDATES
 
 CLS_Literal: Type = _LiteralGenericAlias
 CLS_None: Type = type(None)
@@ -380,9 +383,11 @@ def get_type_candidates(t: Type[OT]) -> Tuple[Type[OT]]:
         raise Exception()  # TODO:
 
 
-def typpeddict_parse(t: Type) -> Dict[str, Type]:
-    if type(t) != CLS_TypedDict:
-        raise Exception("t should a TypedDict for parsing")  # TODO:
+def argstyping_parse(t: Type) -> Dict[str, Type]:
+    if is_T_based(t) not in [dict, object]:
+        raise Exception(
+            "t should a `typing.TypedDict` or a `class` for parsing"
+        )  # TODO:
     key_dict: Dict[str, Type] = get_type_hints(t)
     typed: Dict[str, Type] = dict(((k, CLS_None) for k in key_dict.keys()))
 
@@ -393,8 +398,14 @@ def typpeddict_parse(t: Type) -> Dict[str, Type]:
         else:
             return Optional[raw_t]
 
-    keys_req = t.__required_keys__
-    keys_opt = t.__optional_keys__
+    keys_req: Iterable[str]
+    keys_opt: Iterable[str]
+    if type(t) is CLS_TypedDict:
+        keys_req = t.__required_keys__  # type: ignore FrozenSet[str]
+        keys_opt = t.__optional_keys__  # type: ignore FrozenSet[str]
+    else:
+        keys_req = key_dict.keys()
+        keys_opt = []
     for key in keys_req:
         typed[key] = get_t(key, True)
     for key in keys_opt:
@@ -402,7 +413,7 @@ def typpeddict_parse(t: Type) -> Dict[str, Type]:
     return typed
 
 
-def typpeddict_parse_extra(t: Type):
+def argstyping_parse_extra(t: Type):
     key_dict = get_type_hints(t, include_extras=True)
     extra: Dict[str, AnnoExtra] = {}
     for key, anno in key_dict.items():
@@ -415,4 +426,4 @@ def typpeddict_parse_extra(t: Type):
             else:
                 pass
                 # TODO: warning or error msg?
-    return typpeddict_parse(t), extra
+    return argstyping_parse(t), extra
