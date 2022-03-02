@@ -32,6 +32,7 @@ from typed_cap.typing import (
 from typed_cap.utils import (
     flatten,
     get_terminal_width,
+    is_T_based,
     panic,
     split_by_length,
     to_red,
@@ -76,7 +77,7 @@ class _ParsedVal(TypedDict):
     queue_type: Optional[Literal["list", "tuple"]]
 
 
-T = TypeVar("T", bound=TypedDict)
+T = TypeVar("T", bound=Union[TypedDict, object])
 
 
 class _GVCS(Generic[T]):
@@ -95,14 +96,22 @@ class _GVCS(Generic[T]):
 
 
 class Parsed(Generic[T]):
+    _argstype: Type[T]
+    _args_obj: Optional[T]
     _args: List[str]
     _parsed_map: Dict[str, _ParsedVal]
 
     def __init__(
-        self, args: List[str], parsed_map: Dict[str, _ParsedVal]
+        self,
+        argstype: Type[T],
+        args: List[str],
+        parsed_map: Dict[str, _ParsedVal],
+        args_obj: Optional[T],
     ) -> None:
+        self._argstype = argstype
         self._args = args
         self._parsed_map = parsed_map
+        self._args_obj = args_obj
 
     @property
     def arguments(self) -> List[str]:
@@ -114,19 +123,32 @@ class Parsed(Generic[T]):
 
     @property
     def value(self) -> T:
-        val = {}
+        val: T
+        gvc: _GVCS
+        t_based = is_T_based(self._argstype)
+        if t_based is dict:
+            val = {}  # type: ignore
+            gvc = _GVCS(dict, val)
+        elif t_based is object:
+            if self._args_obj is None:
+                raise Unhandled("args_obj is None", "Parsed.value")
+            val = self._args_obj
+            gvc = _GVCS(object, val)
+        else:
+            raise Unhandled()
+
         for key, parsed in self._parsed_map.items():
             pv = parsed["val"]
             pv = flatten(pv)
             if len(pv) == 0:
-                val[key] = parsed["default_val"]
+                gvc.setVal(key, parsed["default_val"])
             elif parsed["queue_type"] == "list":
-                val[key] = flatten(pv)
+                gvc.setVal(key, flatten(pv))
             elif parsed["queue_type"] == "tuple":
-                val[key] = pv[-1]
+                gvc.setVal(key, pv[-1])
             else:
-                val[key] = pv[-1]
-        return val  # type: ignore
+                gvc.setVal(key, pv[-1])
+        return val
 
     @property
     def val(self) -> T:
