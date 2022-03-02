@@ -26,8 +26,8 @@ from typed_cap.typing import (
     get_optional_candidates,
     get_queue_type,
     get_type_candidates,
-    argstyping_parse as typpeddict_parse,
-    argstyping_parse_extra as typpeddict_parse_extra,
+    argstyping_parse,
+    argstyping_parse_extra,
 )
 from typed_cap.utils import (
     flatten,
@@ -378,9 +378,9 @@ class Cap(Generic[K, T, U]):
         typed: Dict[str, Type]
         extra: Optional[Dict[str, AnnoExtra]] = None
         if sys.version_info.minor < 9:
-            typed = typpeddict_parse(self._argstype)
+            typed = argstyping_parse(self._argstype)
         else:
-            typed, extra = typpeddict_parse_extra(self._argstype)
+            typed, extra = argstyping_parse_extra(self._argstype)
 
         for key, t in typed.items():
             self.add_argument(
@@ -470,31 +470,37 @@ class Cap(Generic[K, T, U]):
         return self.default_strict(value)  # type: ignore[arg-type]
 
     def default_strict(self, value: T) -> Cap:
-        for arg, val in value.items():
-            try:
-                t = self._args[arg]["type"]
-                valid, _, _ = VALIDATOR.extract(t, val, cvt=False)
-                if valid:
-                    self._args[arg]["val"] = val
-                else:
-                    # raise CapInvalidDefaultValue(arg, t, val)
+        if is_T_based(self._argstype) is object:
+            # TODO: TBD: should default be available for object-based?
+            print(
+                "[warn] `default` has been ignore since cap using an object-based argstype"
+            )
+        else:
+            for arg, val in value.items(): # type: ignore
+                try:
+                    t = self._args[arg]["type"]
+                    valid, _, _ = VALIDATOR.extract(t, val, cvt=False)
+                    if valid:
+                        self._args[arg]["val"] = val
+                    else:
+                        # raise CapInvalidDefaultValue(arg, t, val)
+                        self._panic(
+                            f"invalid default value {colorize_text_t_value(val)} for option {colorize_text_t_option_name(arg)}:{colorize_text_t_type(t)}",
+                            "Cap.default_strict",
+                            CapInvalidDefaultValue(arg, t, val),
+                        )
+                except KeyError as err:
+                    name = str(err)
                     self._panic(
-                        f"invalid default value {colorize_text_t_value(val)} for option {colorize_text_t_option_name(arg)}:{colorize_text_t_type(t)}",
+                        f"unknown named argument {colorize_text_t_option_name(name)}",
                         "Cap.default_strict",
-                        CapInvalidDefaultValue(arg, t, val),
+                        CapUnknownArg(name, "default_strict"),
                     )
-            except KeyError as err:
-                name = str(err)
-                self._panic(
-                    f"unknown named argument {colorize_text_t_option_name(name)}",
-                    "Cap.default_strict",
-                    CapUnknownArg(name, "default_strict"),
-                )
-            except Exception as err:
-                raise Unhandled(
-                    desc=f"unknown issue: {err.__class__.__name__}",
-                    loc="Cap.default_strict",
-                )
+                except Exception as err:
+                    raise Unhandled(
+                        desc=f"unknown issue: {err.__class__.__name__}",
+                        loc="Cap.default_strict",
+                    )
         return self
 
     def helper(self, helpers: Dict[K, ArgOpt]) -> Cap:
