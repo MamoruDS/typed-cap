@@ -53,3 +53,17 @@ def test_count_alias_B():
     cap.helper({"verbose": {"alias": "v"}})
     res = cap.parse(cmd("-vvv"))
     assert res.count("verbose") == 3
+
+
+def test_extends_typeddict():
+    class A(TypedDict):
+        silent: bool
+
+    class B(A):
+        depth: int
+
+    cap = Cap(B)
+    cap.default_strict({"silent": False, "depth": -1})
+    res = cap.parse(cmd(""))
+    assert res.val["silent"] == False
+    assert res.val["depth"] == -1
