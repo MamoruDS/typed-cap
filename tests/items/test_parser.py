@@ -1,5 +1,5 @@
 import pytest
-from . import cmd
+from tests import cmd
 from typed_cap import Cap
 from typed_cap.types import ArgsParserKeyError
 from typing import List, Optional, Tuple, TypedDict
