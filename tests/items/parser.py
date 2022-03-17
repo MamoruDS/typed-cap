@@ -1,37 +1,41 @@
-import pytest
-from tests import cmd
+from tests import CFG, cmd, get_profile
 from typed_cap import Cap
 from typed_cap.types import ArgsParserKeyError
-from typing import List, Optional, Tuple, TypedDict
+from typing import List, Optional, Tuple
+
+
+TEST_PROFILE = get_profile(CFG.cur)
+B = TEST_PROFILE.based
+G = TEST_PROFILE.val_getter
 
 
 def test_flag():
-    class T(TypedDict):
+    class T(B):
         silent: Optional[bool]
 
     cap = Cap(T)
     res = cap.parse(cmd("--silent"))
-    assert res.val["silent"] == True
+    assert G(res.val, "silent") == True
 
     res = cap.parse(cmd(""))
-    assert res.val["silent"] is None
+    assert G(res.val, "silent") is None
 
 
 def test_flag_multi():
-    class T(TypedDict):
+    class T(B):
         silent: Optional[bool]
         human_readable: Optional[bool]
         all: Optional[bool]
 
     cap = Cap(T)
     res = cap.parse(cmd("--silent --all"))
-    assert res.val["silent"] == True
-    assert res.val["human_readable"] is None
-    assert res.val["all"] == True
+    assert G(res.val, "silent") == True
+    assert G(res.val, "human_readable") is None
+    assert G(res.val, "all") == True
 
 
 def test_flag_alias_A():
-    class T(TypedDict):
+    class T(B):
         silent: Optional[bool]
         human_readable: Optional[bool]
         all: Optional[bool]
@@ -45,13 +49,13 @@ def test_flag_alias_A():
         }
     )
     res = cap.parse(cmd("-s -a"))
-    assert res.val["silent"] == True
-    assert res.val["human_readable"] is None
-    assert res.val["all"] == True
+    assert G(res.val, "silent") == True
+    assert G(res.val, "human_readable") is None
+    assert G(res.val, "all") == True
 
 
 def test_flag_alias_B():
-    class T(TypedDict):
+    class T(B):
         silent: Optional[bool]
         human_readable: Optional[bool]
         all: Optional[bool]
@@ -65,131 +69,131 @@ def test_flag_alias_B():
         }
     )
     res = cap.parse(cmd("-ah"))
-    assert res.val["silent"] is None
-    assert res.val["human_readable"] == True
-    assert res.val["all"] == True
+    assert G(res.val, "silent") is None
+    assert G(res.val, "human_readable") == True
+    assert G(res.val, "all") == True
 
 
 def test_option_str_A():
-    class T(TypedDict):
+    class T(B):
         name: str
 
     cap = Cap(T)
     res = cap.parse(cmd("--name foo"))
-    assert res.val["name"] == "foo"
+    assert G(res.val, "name") == "foo"
 
 
 def test_option_str_B():
-    class T(TypedDict):
+    class T(B):
         name: str
 
     cap = Cap(T)
     res = cap.parse(cmd("--name=bar"))
-    assert res.val["name"] == "bar"
+    assert G(res.val, "name") == "bar"
 
 
 def test_option_number_A():
-    class T(TypedDict):
+    class T(B):
         age: int
 
     cap = Cap(T)
     res = cap.parse(cmd("--age=10"))
-    assert res.val["age"] == 10
+    assert G(res.val, "age") == 10
 
 
 def test_option_number_B():
-    class T(TypedDict):
+    class T(B):
         ratio: float
 
     cap = Cap(T)
     res = cap.parse(cmd("--ratio 3.14"))
-    assert res.val["ratio"] == 3.14
+    assert G(res.val, "ratio") == 3.14
 
 
 def test_option_tuple_A():
-    class T(TypedDict):
+    class T(B):
         member: Tuple[str, int]
 
     cap = Cap(T)
     res = cap.parse(cmd("--member foo,25"))
-    assert res.val["member"] == ("foo", 25)
+    assert G(res.val, "member") == ("foo", 25)
 
 
 def test_option_tuple_B():
-    class T(TypedDict):
+    class T(B):
         member: tuple[str, float]
 
     cap = Cap(T)
     res = cap.parse(cmd("--member bar,25"))
-    assert res.val["member"] == ("bar", 25.0)
+    assert G(res.val, "member") == ("bar", 25.0)
 
 
 def test_option_list_A():
-    class T(TypedDict):
+    class T(B):
         message: List[str]
 
     cap = Cap(T)
     res = cap.parse(cmd("--message foo,bar"))
-    assert res.val["message"] == ["foo", "bar"]
+    assert G(res.val, "message") == ["foo", "bar"]
 
 
 def test_option_list_B():
-    class T(TypedDict):
+    class T(B):
         message: list[str]
 
     cap = Cap(T)
     res = cap.parse(cmd("--message foo --message bar"))
-    assert res.val["message"] == ["foo", "bar"]
+    assert G(res.val, "message") == ["foo", "bar"]
 
 
 # FIXME: global delimiter not working
 # TODO: add local delimiter (for every arg)
 def test_option_list_delimiter():
-    class T(TypedDict):
+    class T(B):
         message: List[str]
 
     cap = Cap(T)
     cap.set_delimiter("")
     res = cap.parse(cmd("--message foo,bar"))
-    assert res.val["message"] == ["foo,bar"]
+    assert G(res.val, "message") == ["foo,bar"]
 
 
 # TODO: tuple length determining
 def test_option_mix_A():
-    class T(TypedDict):
+    class T(B):
         data: Tuple[List[str], float, bool]
 
     cap = Cap(T)
     res = cap.parse(cmd("--data=a,b,5,false"))
     # FIXME:
-    assert res.val["data"] != (["a", "b"], 5.0, False)
+    assert G(res.val, "data") != (["a", "b"], 5.0, False)
 
 
 # TODO: tuple length determining
 def test_option_mix_B():
-    class T(TypedDict):
+    class T(B):
         data: Tuple[float, bool, Tuple[str, int]]
 
     cap = Cap(T)
     res = cap.parse(cmd("--data=5,false,a,5"))
     # FIXME:
-    assert res.val["data"] != (5.0, False, ("a", 5))
+    assert G(res.val, "data") != (5.0, False, ("a", 5))
 
 
 # test for alt bool
 
 
 def test_arguments_A():
-    class T(TypedDict):
+    class T(B):
         all: Optional[bool]
         human_readable: Optional[bool]
         max_depth: Optional[int]
 
     cap = Cap(T)
     res = cap.parse(cmd("--all --human-readable --max-depth=1 /usr/bin"))
-    assert res.val["all"] == True
-    assert res.val["human_readable"] == True
-    assert res.val["max_depth"] == 1
+    assert G(res.val, "all") == True
+    assert G(res.val, "human_readable") == True
+    assert G(res.val, "max_depth") == 1
     assert res.args == ["/usr/bin"]
 
 
@@ -197,7 +201,7 @@ def test_arguments_A():
 
 
 def test_arguments_B():
-    class T(TypedDict):
+    class T(B):
         all: Optional[bool]
         human_readable: Optional[bool]
         max_depth: Optional[int]

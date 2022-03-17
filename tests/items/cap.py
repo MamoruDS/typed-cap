@@ -1,23 +1,15 @@
-import pytest
-from tests import cmd
+from tests import CFG, cmd, get_profile
 from typed_cap import Cap
-from typing import List, Optional, Tuple, TypedDict
+from typing import Optional
 
 
-def test_default():
-    class T(TypedDict):
-        silent: bool
-        depth: int
-
-    cap = Cap(T)
-    cap.default_strict({"silent": False, "depth": -1})
-    res = cap.parse(cmd(""))
-    assert res.val["silent"] == False
-    assert res.val["depth"] == -1
+TEST_PROFILE = get_profile(CFG.cur)
+B = TEST_PROFILE.based
+G = TEST_PROFILE.val_getter
 
 
 def test_count_A():
-    class T(TypedDict):
+    class T(B):
         verbose: Optional[bool]
 
     cap = Cap(T)
@@ -26,7 +18,7 @@ def test_count_A():
 
 
 def test_count_B():
-    class T(TypedDict):
+    class T(B):
         name: str
         verbose: Optional[bool]
 
@@ -36,7 +28,7 @@ def test_count_B():
 
 
 def test_count_alias_A():
-    class T(TypedDict):
+    class T(B):
         verbose: Optional[bool]
 
     cap = Cap(T)
@@ -46,7 +38,7 @@ def test_count_alias_A():
 
 
 def test_count_alias_B():
-    class T(TypedDict):
+    class T(B):
         verbose: Optional[bool]
 
     cap = Cap(T)
@@ -56,14 +48,13 @@ def test_count_alias_B():
 
 
 def test_extends_typeddict():
-    class A(TypedDict):
-        silent: bool
+    class T1(B):
+        silent: Optional[bool]
 
-    class B(A):
+    class T2(T1):
         depth: int
 
-    cap = Cap(B)
-    cap.default_strict({"silent": False, "depth": -1})
-    res = cap.parse(cmd(""))
-    assert res.val["silent"] == False
-    assert res.val["depth"] == -1
+    cap = Cap(T2)
+    res = cap.parse(cmd("--depth=-1"))
+    assert G(res.val, "silent") == None
+    assert G(res.val, "depth") == -1
