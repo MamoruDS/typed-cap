@@ -1,4 +1,14 @@
-from typing import Literal, Optional, TypedDict
+from typing import (
+    Any,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Type,
+    TypedDict,
+    Union,
+)
 
 
 VALID_ALIAS_CANDIDATES = Literal[
@@ -72,9 +82,25 @@ class ArgOpt(TypedDict, total=False):
     alias: VALID_ALIAS_CANDIDATES
 
 
+ArgTypes = Literal["flag", "option"]
+ArgNamed = Tuple[str, Optional[str]]  # (name, alias)
+
+
+class ArgsParserOptions(TypedDict, total=False):
+    ignore_unknown: bool
+    ignore_unknown_flags: bool
+    ignore_unknown_options: bool
+    disable_hyphen_conversion: bool
+
+
+class ArgsParserResults(TypedDict):
+    args: List[str]
+    options: Dict[str, List[Union[str, bool]]]
+
+
 class ArgsParserKeyError(Exception):
     key: str
-    key_type: str
+    key_type: ArgTypes
 
     def __init__(
         self,
@@ -123,6 +149,56 @@ class ArgsParserUnexpectedValue(Exception):
         super().__init__(*args)
 
 
+class _CapInvalidValue(Exception):
+    key: str
+    type_class: Type
+    val: Any
+
+    def __init__(
+        self, key: str, type_class: Type, val: Any, *args: object
+    ) -> None:
+        self.key = key
+        self.type_class = type_class
+        self.val = val
+        super().__init__(*args)
+
+
+class CapInvalidValue(_CapInvalidValue):
+    pass
+
+
+class CapInvalidDefaultValue(_CapInvalidValue):
+    pass
+
+
+class CapInvalidAlias(Exception):
+    key: str
+    alias: str
+
+    def __init__(self, key: str, alias: str, *args: object) -> None:
+        self.key = key
+        self.alias = alias
+        super().__init__(*args)
+
+
+class CapArgKeyNotFound(Exception):
+    key: str
+
+    def __init__(self, key: str, *args: object) -> None:
+        self.key = key
+        super().__init__(*args)
+
+
+class CapUnknownArg(Exception):
+    key: str
+    desc: Optional[str]
+
+    def __init__(self, key: str, desc: str, *args: object) -> None:
+        self.key = key
+        self.desc = desc
+        super().__init__(*args)
+
+
 class Unhandled(Exception):
     msg: str
     desc: Optional[str]
@@ -133,11 +209,11 @@ class Unhandled(Exception):
     ) -> None:
         self.desc = desc
         self.loc = loc
-        if loc == None:
+        if loc is None:
             loc = ""
         else:
             loc = f" in `{loc}`"
-        if desc == None:
+        if desc is None:
             desc = ""
         else:
             desc = "\n\t" + desc
