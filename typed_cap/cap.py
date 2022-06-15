@@ -35,11 +35,9 @@ from typed_cap.utils import (
     is_T_based,
     panic,
     split_by_length,
-    to_red,
-    to_yellow,
-    to_blue,
     unwrap_or,
 )
+from typed_cap.utils.color import Colors, fg
 from typing import (
     Any,
     Callable,
@@ -69,6 +67,7 @@ class _ArgOpt(TypedDict):
     cb: Optional[ArgCallback]
     cb_idx: int
     hide: bool
+    doc: Optional[str]
 
 
 class _ParsedVal(TypedDict):
@@ -300,19 +299,19 @@ helpers: _Helpers = {
 def colorize_text_t_type(t: Type) -> str:
     tn = ""
     try:
-        tn = t.__name__
+        tn: str = t.__name__
     except AttributeError:
         tn = str(t)
-    return to_blue(tn)
+    return str(fg(tn, Colors.Blue))
 
 
 def colorize_text_t_option_name(key: str) -> str:
-    return to_yellow(key)
+    return str(fg(key, Colors.Yellow))
 
 
 def colorize_text_t_value(val: Any) -> str:
     try:
-        return to_red(str(val))
+        return str(fg(val, Colors.Red))
     except Exception as err:
         print(err)
         return "[...]"
@@ -419,6 +418,7 @@ class Cap(Generic[K, T, U]):
             "cb": callback,
             "cb_idx": callback_priority,
             "hide": hide,
+            "doc": None,
         }
         if alias is not None:
             try:
