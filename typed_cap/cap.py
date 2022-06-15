@@ -37,6 +37,7 @@ from typed_cap.utils import (
     split_by_length,
     unwrap_or,
 )
+from typed_cap.utils.code import get_named_doc
 from typed_cap.utils.color import Colors, fg
 from typing import (
     Any,
@@ -340,6 +341,7 @@ class Cap(Generic[K, T, U]):
         self._raw_err = False
         self._preset_helper_used = False
         self._parse_argstype()
+        self._parse_docstring()
 
     def _get_key(self, name: str) -> Union[NoReturn, str]:
         for key, opt in self._args.items():
@@ -372,6 +374,11 @@ class Cap(Generic[K, T, U]):
             title = unwrap_or(self._name, alt_title)
             err_msg = f"{title}: {msg}\n\t{err.__class__.__name__}"
             panic(err_msg)
+
+    def _parse_docstring(self):
+        named_doc = get_named_doc(self._argstype)
+        for name, doc in named_doc:
+            self._args[name]["doc"] = doc
 
     def _parse_argstype(self):
         typed: Dict[str, Type]
