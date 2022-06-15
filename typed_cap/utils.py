@@ -55,23 +55,6 @@ def panic(msg: str, exit_code: int = 1) -> NoReturn:
     exit(exit_code)
 
 
-def remove_comments(code: Union[str, List[str]]) -> List[str]:
-    if isinstance(code, list):
-        code = "\n".join(code)
-    code = re.sub(r"#[^$|^\n]+", "", code, flags=re.MULTILINE)
-    code = re.sub(r"\"\"\"[^(\"\"\")]+\"\"\"", "", code, flags=re.MULTILINE)
-    if isinstance(code, str):
-        lines = code.split("\n")
-    else:
-        lines = code
-    res = []
-    for l in lines:
-        if l.lstrip() == "":
-            continue
-        res.append(l)
-    return res
-
-
 def splice(
     array: List[Any], start: int, delete_count: int, *items: Any
 ) -> List[Any]:
