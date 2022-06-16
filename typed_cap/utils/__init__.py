@@ -99,26 +99,6 @@ def split_by_length(
         return lns
 
 
-def _to_color(text, code: str) -> str:
-    return f"{code}{text}\x1b[0m"
-
-
-def to_red(text) -> str:
-    return _to_color(text, "\x1b[31m")
-
-
-def to_green(text) -> str:
-    return _to_color(text, "\x1b[32m")
-
-
-def to_yellow(text) -> str:
-    return _to_color(text, "\x1b[33m")
-
-
-def to_blue(text) -> str:
-    return _to_color(text, "\x1b[34m")
-
-
 D = TypeVar("D")
 
 
