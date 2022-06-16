@@ -1,7 +1,21 @@
 import ast
 import inspect
 import re
+import sys
 from typing import Dict, Optional
+
+
+def reset_indent(code: str) -> str:
+    lines = code.split("\n")
+    zero = sys.maxsize
+    for ln in lines:
+        striped = ln.lstrip()
+        if len(striped) != 0:
+            left = len(ln) - len(striped)
+            if left < zero:
+                zero = left
+    code = "\n".join([ln[zero:] for ln in lines])
+    return code
 
 
 def get_doc_from_ast(
@@ -40,6 +54,7 @@ def get_named_doc(c: type, stop_at: Optional[type] = None) -> Dict[str, str]:
 
     for c in bases:
         src = inspect.getsource(c)
+        src = reset_indent(src)
         parsed = ast.parse(src)
         get_doc_from_ast(parsed, named_doc)
 
