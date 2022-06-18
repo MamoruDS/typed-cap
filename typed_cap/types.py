@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import (
     Any,
     Callable,
@@ -12,6 +13,8 @@ from typing import (
     TypedDict,
     Union,
 )
+
+from typed_cap.utils import RO
 
 
 VALID_ALIAS_CANDIDATES = Literal[
@@ -95,6 +98,7 @@ class BasicArgOption(TypedDict):
 #     doc: Optional[str]
 #     cmt_params: Dict[str, Optional[str]]
 
+
 class ArgOption(BasicArgOption):
     val: Optional[Any]
     type: Type
@@ -106,7 +110,7 @@ class ArgOption(BasicArgOption):
     cmt_params: Dict[str, Optional[str]]
     show_default: bool
     cls_attr_val: Optional[Any]
-
+    local_delimiter: RO[str]
 
 
 ArgTypes = Literal["flag", "option"]
@@ -256,16 +260,6 @@ class CmtParamInvalidFlagValue(CmtParamInvalidValue):
         self, name: str, param: str, value: str, *args: object
     ) -> None:
         super().__init__(name, param, value, *args)
-
-
-class CmtParamInvalidAlias(CmtParamInvalidValue):
-    alias: str
-
-    def __init__(
-        self, name: str, param: str, alias: str, *args: object
-    ) -> None:
-        self.alias = alias
-        super().__init__(name, param, alias, *args)
 
 
 class Unhandled(Exception):

@@ -33,6 +33,7 @@ from typed_cap.typing import (
     argstyping_parse_extra,
 )
 from typed_cap.utils import (
+    RO,
     flatten,
     get_terminal_width,
     is_T_based,
@@ -389,9 +390,15 @@ class Cap(Generic[K, T, U]):
         if use_anno_cmt_params:
             named_params = parse_anno_cmt_params(self._args)
             for name, params in named_params.items():
+                #
                 alias = params.get("alias", None)
                 if alias is not None:
                     self._set_alias(name, alias)
+                #
+                delimiter = params.get('delimiter', None)
+                if delimiter is not None:
+                    self._args[name]["local_delimiter"] = delimiter
+                #
                 show_default = params.get("show_default", None)
                 if show_default is not None:
                     self._args[name]["show_default"] = show_default
@@ -501,6 +508,7 @@ class Cap(Generic[K, T, U]):
             "cmt_params": {},
             "show_default": show_default,
             "cls_attr_val": cls_attr_val,
+            "local_delimiter": RO.NONE(),
         }
         if alias is not None:
             try:
@@ -681,7 +689,14 @@ class Cap(Generic[K, T, U]):
             )
             for v in val:
                 t = opt["type"]
-                valid, v_got, err = VALIDATOR.extract(t, v, cvt=True)
+                temp_delimiter = opt["local_delimiter"]
+                valid, v_got, err = VALIDATOR.extract(
+                    t,
+                    v,
+                    cvt=True,
+                    temp_delimiter=temp_delimiter,
+                    leave_scope=True,
+                )
                 # TODO: catch extract failed
                 if valid:
                     parsed["val"].append([v_got])

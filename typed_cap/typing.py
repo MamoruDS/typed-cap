@@ -1,5 +1,5 @@
 from inspect import isclass
-from typed_cap.types import BasicArgOption, BuiltIn, VALID_ALIAS_CANDIDATES
+from typed_cap.types import BasicArgOption, VALID_ALIAS_CANDIDATES
 from typed_cap.utils import is_T_based, RO
 from types import GenericAlias
 from typing import (
