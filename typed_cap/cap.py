@@ -345,8 +345,8 @@ def colorize_text_t_value(val: Any) -> str:
 class Cap(Generic[K, T, U]):
     _argstype: Type[T]
     _args: Dict[str, _ArgOpt]
-    _delimiter: Optional[str] = ","
     _about: Optional[str]
+    _delimiter: RO[str]
     _name: Optional[str]
     _version: Optional[str]
     _raw_err: bool
@@ -370,6 +370,7 @@ class Cap(Generic[K, T, U]):
         self._argstype = argstype
         self._args = {}
         self._about = None
+        self._delimiter: RO[str] = RO.Some(",")
         self._name = None
         self._version = None
         self._raw_err = False
@@ -395,7 +396,7 @@ class Cap(Generic[K, T, U]):
                 if alias is not None:
                     self._set_alias(name, alias)
                 #
-                delimiter = params.get('delimiter', None)
+                delimiter = params.get("delimiter", None)
                 if delimiter is not None:
                     self._args[name]["local_delimiter"] = delimiter
                 #
@@ -521,7 +522,7 @@ class Cap(Generic[K, T, U]):
         return self
 
     def set_delimiter(self, delimiter: Optional[str]) -> Cap:
-        self._delimiter = delimiter
+        self._delimiter = RO.Some(delimiter)
         return self
 
     def set_callback(
@@ -628,6 +629,8 @@ class Cap(Generic[K, T, U]):
         argv: List[str] = sys.argv[1:],
         args_parser_options: Optional[ArgsParserOptions] = None,
     ) -> Parsed[T]:
+        VALIDATOR.delimiter = self._delimiter
+
         def _is_flag(t: Type) -> bool:
             if t == bool:
                 return True

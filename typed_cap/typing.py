@@ -89,6 +89,10 @@ class ValidVal:
         else:
             return self._delimiter
 
+    @delimiter.setter
+    def delimiter(self, delimiter: RO[str]) -> None:
+        self._delimiter = delimiter
+
     def extract(
         self,
         t: Type,
