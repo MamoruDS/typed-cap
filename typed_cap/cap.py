@@ -1,4 +1,5 @@
 from __future__ import annotations
+import inspect
 import json
 import sys
 from typed_cap.types import (
@@ -213,21 +214,28 @@ def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
             prefix_width + MIN_ABOUT_WIDTH,
         )
         remain_width = width - prefix_width
+
         for key, ln in arg_lns:
             about = []
             if c._args[key]["about"] is not None:
                 about.append(c._args[key]["about"])
-            # TODO: add option `show_default=True`
-            if c._args[key]["val"] is not None:
-                # default_val = colorize_text_t_value(str(c._args[key]["val"]))
+
+            default_val = None
+            if c._args[key]["val"] is None:
+                if c._args[key]["cls_attr_val"] is not None:
+                    default_val = str(c._args[key]["cls_attr_val"])
+            else:
                 default_val = str(c._args[key]["val"])
+            if default_val is not None and c._args[key]["show_default"]:
                 about.append(f"(default: {default_val})")
+
             about = split_by_length(
                 " ".join(about),
                 remain_width,
                 add_hyphen=True,
                 remove_leading_space=True,
             )
+
             if len(about) == 0:
                 about = [""]
             for i, abt in enumerate(about):
@@ -235,6 +243,7 @@ def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
                     lns.append((1, ln.ljust(max_opt_len + 4) + abt))
                 else:
                     lns.append((1, "".ljust(prefix_width) + abt))
+
         for indent, ln in lns:
             print("".ljust(indent * INDENT_SIZE) + ln)
     exit(0)
@@ -352,6 +361,7 @@ class Cap(Generic[K, T, U]):
         self,
         argstype: Type[T],
         stop_at_type: Optional[type] = None,
+        use_cls_doc_as_about: bool = True,
         use_anno_doc_as_about: bool = True,
         use_anno_cmt_params: bool = True,
         add_helper_help: bool = True,
@@ -369,6 +379,9 @@ class Cap(Generic[K, T, U]):
         self._parse_argstype()
         self._parse_anno_details()
 
+        if use_cls_doc_as_about:
+            self._about = inspect.getdoc(self._argstype)
+
         if use_anno_doc_as_about:
             for name, opt in self._args.items():
                 self._args[name]["about"] = unwrap_or(opt["about"], opt["doc"])
@@ -379,6 +392,9 @@ class Cap(Generic[K, T, U]):
                 alias = params.get("alias", None)
                 if alias is not None:
                     self._set_alias(name, alias)
+                show_default = params.get("show_default", None)
+                if show_default is not None:
+                    self._args[name]["show_default"] = show_default
 
         if add_helper_help:
             if self._args.get("help") is None:
@@ -436,11 +452,17 @@ class Cap(Generic[K, T, U]):
             typed, extra = argstyping_parse_extra(self._argstype)
 
         for key, t in typed.items():
+            attr_val = None
+            try:
+                attr_val = self._argstype.__getattribute__(self._argstype, key)  # type: ignore
+            except AttributeError:
+                pass
             self.add_argument(
                 key,
                 arg_type=t,
                 callback_priority=0,
                 hide=False,
+                cls_attr_val=attr_val,
                 prevent_overwrite=False,
                 ignore_invalid_alias=False,
             )
@@ -458,6 +480,9 @@ class Cap(Generic[K, T, U]):
         callback: Optional[ArgCallback] = None,
         callback_priority: int = 1,
         hide: bool = False,
+        doc: Optional[str] = None,
+        show_default: bool = True,
+        cls_attr_val: Optional[Any] = None,
         prevent_overwrite: bool = False,
         ignore_invalid_alias: bool = False,
     ) -> Cap:
@@ -472,8 +497,10 @@ class Cap(Generic[K, T, U]):
             "cb": callback,
             "cb_idx": callback_priority,
             "hide": hide,
-            "doc": None,
+            "doc": doc,
             "cmt_params": {},
+            "show_default": show_default,
+            "cls_attr_val": cls_attr_val,
         }
         if alias is not None:
             try:

@@ -101,8 +101,12 @@ class ArgOption(BasicArgOption):
     cb: Optional[Callable]
     cb_idx: int
     hide: bool
+    #
     doc: Optional[str]
     cmt_params: Dict[str, Optional[str]]
+    show_default: bool
+    cls_attr_val: Optional[Any]
+
 
 
 ArgTypes = Literal["flag", "option"]
