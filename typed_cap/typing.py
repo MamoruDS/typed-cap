@@ -1,6 +1,6 @@
 from inspect import isclass
-from typed_cap.types import BasicArgOption, VALID_ALIAS_CANDIDATES
-from typed_cap.utils import is_T_based
+from typed_cap.types import BasicArgOption, BuiltIn, VALID_ALIAS_CANDIDATES
+from typed_cap.utils import is_T_based, RO
 from types import GenericAlias
 from typing import (
     Annotated,
@@ -64,11 +64,15 @@ class TypeInf(TypedDict):
 
 class ValidVal:
     validators: Dict[str, TypeInf]
-    delimiter: Optional[str] = None
+    _delimiter: RO[str]
+
+    # temp only
+    _temp_delimiter: RO[str]
 
     def __init__(self, validators: Dict[str, TypeInf]) -> None:
         self.validators = validators
-        self.delimiter = ","
+        self._delimiter = RO.Some(",")
+        self._temp_delimiter = RO.NONE()
 
     def _class_of(self, obj: Any) -> Optional[Any]:
         try:
@@ -78,7 +82,25 @@ class ValidVal:
         except Exception as e:
             raise e
 
-    def extract(self, t: Type, val: Any, cvt: bool) -> VALID_RES:
+    @property
+    def delimiter(self) -> RO[str]:
+        if self._temp_delimiter.is_some():
+            return self._temp_delimiter
+        else:
+            return self._delimiter
+
+    def extract(
+        self,
+        t: Type,
+        val: Any,
+        cvt: bool,
+        temp_delimiter: RO[str] = RO.NONE(),
+        leave_scope: bool = False,
+    ) -> VALID_RES:
+        # apply all temporal settings
+        if temp_delimiter.is_some():
+            self._temp_delimiter = temp_delimiter
+
         REG = self.validators
         res: Optional[VALID_RES] = None
         if type(t) == str:
@@ -94,6 +116,11 @@ class ValidVal:
                     res = t_inf["v"](self, t, val, cvt)
                 else:
                     continue
+
+        # remove all temporal settings
+        if leave_scope:
+            self._temp_delimiter = RO.NONE()
+
         if res is None:
             # TODO:
             print(f"\t> t.__class__: {t.__class__}")
@@ -240,8 +267,9 @@ def _valid_queue(vv: ValidVal, t: CLS_Queue, val: Any, cvt: bool) -> VALID_RES:
             v = arr
             if loc_type == tuple:
                 v = tuple(v)
-    elif cvt and type(val) == str and vv.delimiter is not None:
-        arr = val.split(vv.delimiter)
+    elif cvt and type(val) == str and vv.delimiter.is_some():
+        # TODO: vv.delimiter is always "has some"
+        arr = val.split(vv.delimiter.value)
         if loc_type == tuple:
             arr = tuple(arr)
         return vv.extract(t, arr, cvt)
