@@ -37,7 +37,11 @@ from typed_cap.utils import (
     split_by_length,
     unwrap_or,
 )
-from typed_cap.utils.code import get_named_doc
+from typed_cap.utils.code import (
+    get_all_comments_parameters,
+    get_annotations,
+    get_docs_from_annotations,
+)
 from typed_cap.utils.color import Colors, fg
 from typing import (
     Any,
@@ -69,6 +73,7 @@ class _ArgOpt(TypedDict):
     cb_idx: int
     hide: bool
     doc: Optional[str]
+    cmt_params: Dict[str, Any]
 
 
 class _ParsedVal(TypedDict):
@@ -341,7 +346,7 @@ class Cap(Generic[K, T, U]):
         self._raw_err = False
         self._preset_helper_used = False
         self._parse_argstype()
-        self._parse_docstring()
+        self._parse_anno_details()
 
     def _get_key(self, name: str) -> Union[NoReturn, str]:
         for key, opt in self._args.items():
@@ -375,10 +380,14 @@ class Cap(Generic[K, T, U]):
             err_msg = f"{title}: {msg}\n\t{err.__class__.__name__}"
             panic(err_msg)
 
-    def _parse_docstring(self):
-        named_doc = get_named_doc(self._argstype)
-        for name, doc in named_doc:
+    def _parse_anno_details(self):
+        annos = get_annotations(self._argstype)
+        named_doc = get_docs_from_annotations(annos)
+        named_cmt_params = get_all_comments_parameters(annos)
+        for name, doc in named_doc.items():
             self._args[name]["doc"] = doc
+        for name, cmt_params in named_cmt_params.items():
+            self._args[name]["cmt_params"] = cmt_params
 
     def _parse_argstype(self):
         typed: Dict[str, Type]
@@ -426,6 +435,7 @@ class Cap(Generic[K, T, U]):
             "cb_idx": callback_priority,
             "hide": hide,
             "doc": None,
+            "cmt_params": {},
         }
         if alias is not None:
             try:
@@ -626,10 +636,11 @@ class Cap(Generic[K, T, U]):
         cb_list = sorted(cb_list, key=lambda x: x[1])
         cb_list.reverse()
         for key, _ in cb_list:
-            parsed = parsed_map.get(key)
-            if parsed is None:
+            _p = parsed_map.get(key)
+            if _p is None:
                 continue
             else:
+                parsed = _p
                 if len(parsed["val"]) >= 0:
                     try:
                         arg = self._args[key]
