@@ -219,9 +219,16 @@ def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
         )
         remain_width = width - prefix_width
         for key, ln in arg_lns:
-            about = unwrap_or(c._args[key]["about"], "")
+            about = []
+            if c._args[key]["about"] is not None:
+                about.append(c._args[key]["about"])
+            # TODO: add option `show_default=True`
+            if c._args[key]["val"] is not None:
+                # default_val = colorize_text_t_value(str(c._args[key]["val"]))
+                default_val = str(c._args[key]["val"])
+                about.append(f'(default: {default_val})')
             about = split_by_length(
-                about, remain_width, add_hyphen=True, remove_leading_space=True
+                ' '.join(about), remain_width, add_hyphen=True, remove_leading_space=True
             )
             for i, abt in enumerate(about):
                 if i == 0:
