@@ -58,6 +58,7 @@ from typing import (
     TypeVar,
     TypedDict,
     Union,
+    get_args,
 )
 
 
@@ -226,9 +227,12 @@ def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
             if c._args[key]["val"] is not None:
                 # default_val = colorize_text_t_value(str(c._args[key]["val"]))
                 default_val = str(c._args[key]["val"])
-                about.append(f'(default: {default_val})')
+                about.append(f"(default: {default_val})")
             about = split_by_length(
-                ' '.join(about), remain_width, add_hyphen=True, remove_leading_space=True
+                " ".join(about),
+                remain_width,
+                add_hyphen=True,
+                remove_leading_space=True,
             )
             for i, abt in enumerate(about):
                 if i == 0:
@@ -303,6 +307,7 @@ class _Helpers(TypedDict):
     arg_version: _Helper_fn
 
 
+# TODO: remove this
 helpers: _Helpers = {
     "arg_help": helper_arg_help,
     "arg_version": helper_arg_version,
@@ -340,10 +345,20 @@ class Cap(Generic[K, T, U]):
     _version: Optional[str]
     _raw_err: bool
     _preset_helper_used: bool
+    # cap options
+    stop_at_type: Optional[type]
+
+    @staticmethod
+    def helpers() -> _Helpers:
+        return helpers
 
     def __init__(
         self,
         argstype: Type[T],
+        stop_at_type: Optional[type] = None,
+        use_anno_doc_as_about: bool = True,
+        use_anno_cmt_params: bool = True,
+        add_helper_help: bool = True,
     ) -> None:
         self._argstype = argstype
         self._args = {}
@@ -352,8 +367,25 @@ class Cap(Generic[K, T, U]):
         self._version = None
         self._raw_err = False
         self._preset_helper_used = False
+        #
+        self.stop_at_type = stop_at_type
+        #
         self._parse_argstype()
         self._parse_anno_details()
+        #
+        # if use_anno_doc_as_about:
+        #     for name, opt in self._args.items():
+        #         self._args[name]["about"] = unwrap_or(opt["about"], opt["doc"])
+        # if use_anno_cmt_params:
+        #     for name, opt in self._args.items():
+        #         # self._args[name]["about"] = unwrap_or(opt["about"], opt["doc"])
+        #         if opt["cmt_params"].get('alias', None) is not None:
+        #             self._set_alias(name, opt["cmt_params"]['alias'])
+        #
+        if add_helper_help:
+            if self._args.get("help") is None:
+                self.helpers()["arg_help"](self, "help")
+
 
     def _get_key(self, name: str) -> Union[NoReturn, str]:
         for key, opt in self._args.items():
@@ -371,6 +403,8 @@ class Cap(Generic[K, T, U]):
             raise CapArgKeyNotFound(key)
         else:
             if alias is not None:
+                if alias not in get_args(VALID_ALIAS_CANDIDATES):
+                    raise CapInvalidAlias(key, alias)
                 try:
                     self._get_key(alias)
                     raise CapInvalidAlias(key, alias)
@@ -388,7 +422,7 @@ class Cap(Generic[K, T, U]):
             panic(err_msg)
 
     def _parse_anno_details(self):
-        annos = get_annotations(self._argstype)
+        annos = get_annotations(self._argstype, stop_at=self.stop_at_type)
         named_doc = get_docs_from_annotations(annos)
         named_cmt_params = get_all_comments_parameters(annos)
         for name, doc in named_doc.items():

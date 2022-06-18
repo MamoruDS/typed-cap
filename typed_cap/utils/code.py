@@ -96,7 +96,6 @@ def get_annotations(
             try:
                 comment = src.split("\n")[anno.lineno - 2].lstrip()
                 if comment.startswith("#"):
-                    print(f"... {comment}")
                     named_anno[name]["comment"] = comment
             except IndexError:
                 ...
