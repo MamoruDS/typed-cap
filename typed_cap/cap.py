@@ -228,6 +228,8 @@ def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
                 add_hyphen=True,
                 remove_leading_space=True,
             )
+            if len(about) == 0:
+                about = [""]
             for i, abt in enumerate(about):
                 if i == 0:
                     lns.append((1, ln.ljust(max_opt_len + 4) + abt))
