@@ -1,5 +1,5 @@
 from inspect import isclass
-from typed_cap.types import ArgOpt, VALID_ALIAS_CANDIDATES
+from typed_cap.types import BasicArgOption, VALID_ALIAS_CANDIDATES
 from typed_cap.utils import is_T_based
 from types import GenericAlias
 from typing import (
@@ -51,13 +51,8 @@ class AnnoExtra:
         self.alias = alias
         self.about = about
 
-    def to_helper(self) -> ArgOpt:
-        d: ArgOpt = {}
-        if self.about is not None:
-            d["about"] = self.about
-        if self.alias is not None:
-            d["alias"] = self.alias
-        return d
+    def to_helper(self) -> BasicArgOption:
+        return {"about": self.about, "alias": self.alias}
 
 
 class TypeInf(TypedDict):

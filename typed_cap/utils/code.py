@@ -2,8 +2,7 @@ import ast
 import inspect
 import re
 import sys
-from typing import Any, Dict, Optional, TypedDict, Union
-from urllib.parse import parse_qsl, urlparse, parse_qs
+from typing import Dict, Optional, TypedDict, Union
 
 
 class _ParsedAnno:
@@ -135,13 +134,13 @@ def get_docs_from_annotations(
 
 def get_all_comments_parameters(
     annotations: Dict[str, AnnoDetail]
-) -> Dict[str, Dict[str, Any]]:
-    named_params: Dict[str, Dict[str, Any]] = {}
+) -> Dict[str, Dict[str, Optional[str]]]:
+    named_params: Dict[str, Dict[str, Optional[str]]] = {}
     reg = re.compile(r"@(?P<key>\w+)(=(?P<val>((\\@)|([^@]))+))?", re.M)
 
     for name, anno in annotations.items():
         comment = anno["comment"]
-        params: Dict[str, Any] = {}
+        params: Dict[str, Optional[str]] = {}
 
         if comment is not None:
             comment = comment[1:].lstrip()
@@ -150,9 +149,7 @@ def get_all_comments_parameters(
                 key = match.group("key")
                 val = match.group("val")
 
-                if val is None:
-                    val = True
-                else:
+                if val is not None:
                     val = val.rstrip()
                 params[key] = val
 

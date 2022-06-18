@@ -3,7 +3,7 @@ import json
 import sys
 from typed_cap.types import (
     ArgNamed,
-    ArgOpt,
+    ArgOption,
     ArgTypes,
     ArgsParserKeyError,
     ArgsParserMissingArgument,
@@ -11,6 +11,7 @@ from typed_cap.types import (
     ArgsParserOptions,
     ArgsParserUndefinedParser,
     ArgsParserUnexpectedValue,
+    BasicArgOption,
     CapArgKeyNotFound,
     CapInvalidAlias,
     CapInvalidDefaultValue,
@@ -20,6 +21,7 @@ from typed_cap.types import (
     VALID_ALIAS_CANDIDATES,
 )
 from typed_cap.args_parser import args_parser
+from typed_cap.cmt_param import parse_anno_cmt_params
 from typed_cap.typing import (
     VALIDATOR,
     AnnoExtra,
@@ -65,16 +67,8 @@ from typing import (
 ArgCallback = Callable[["Cap", List[List]], Union[NoReturn, List[List]]]
 
 
-class _ArgOpt(TypedDict):
-    val: Optional[Any]
-    type: Type
-    about: Optional[str]
-    alias: Optional[VALID_ALIAS_CANDIDATES]
-    cb: Optional[ArgCallback]
-    cb_idx: int
-    hide: bool
-    doc: Optional[str]
-    cmt_params: Dict[str, Any]
+# _ArgOpt = ArgOption[ArgCallback]
+_ArgOpt = ArgOption
 
 
 class _ParsedVal(TypedDict):
@@ -372,20 +366,21 @@ class Cap(Generic[K, T, U]):
         #
         self._parse_argstype()
         self._parse_anno_details()
-        #
-        # if use_anno_doc_as_about:
-        #     for name, opt in self._args.items():
-        #         self._args[name]["about"] = unwrap_or(opt["about"], opt["doc"])
-        # if use_anno_cmt_params:
-        #     for name, opt in self._args.items():
-        #         # self._args[name]["about"] = unwrap_or(opt["about"], opt["doc"])
-        #         if opt["cmt_params"].get('alias', None) is not None:
-        #             self._set_alias(name, opt["cmt_params"]['alias'])
-        #
+
+        if use_anno_doc_as_about:
+            for name, opt in self._args.items():
+                self._args[name]["about"] = unwrap_or(opt["about"], opt["doc"])
+
+        if use_anno_cmt_params:
+            named_params = parse_anno_cmt_params(self._args)
+            for name, params in named_params.items():
+                alias = params.get("alias", None)
+                if alias is not None:
+                    self._set_alias(name, alias)
+
         if add_helper_help:
             if self._args.get("help") is None:
                 self.helpers()["arg_help"](self, "help")
-
 
     def _get_key(self, name: str) -> Union[NoReturn, str]:
         for key, opt in self._args.items():
@@ -403,8 +398,8 @@ class Cap(Generic[K, T, U]):
             raise CapArgKeyNotFound(key)
         else:
             if alias is not None:
-                if alias not in get_args(VALID_ALIAS_CANDIDATES):
-                    raise CapInvalidAlias(key, alias)
+                # if alias not in get_args(VALID_ALIAS_CANDIDATES):
+                #     raise CapInvalidAlias(key, alias)
                 try:
                     self._get_key(alias)
                     raise CapInvalidAlias(key, alias)
@@ -561,7 +556,7 @@ class Cap(Generic[K, T, U]):
                     )
         return self
 
-    def helper(self, helpers: Dict[K, ArgOpt]) -> Cap:
+    def helper(self, helpers: Dict[K, BasicArgOption]) -> Cap:
         if self._preset_helper_used:
             print(
                 "[warn] detected call of `Cap.helper` after call of preset helpers"

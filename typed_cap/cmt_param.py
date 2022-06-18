@@ -1,0 +1,85 @@
+from typed_cap.types import (
+    ArgOption,
+    CmtParamInvalidAlias,
+    VALID_ALIAS_CANDIDATES,
+    CmtParamInvalidFlagValue,
+    CmtParamMissingValue,
+)
+from typing import Dict, NoReturn, Optional, TypedDict, Union, get_args
+
+_CmtParamVal = Optional[str]
+
+
+class ValidParams(TypedDict, total=False):
+    alias: VALID_ALIAS_CANDIDATES
+    show_default: bool
+
+
+NamedValidParams = Dict[str, ValidParams]
+
+
+def _parse_flag_generic(
+    name: str, flag_name: str, val: _CmtParamVal, flag_val: bool
+) -> Union[bool, NoReturn]:
+    if val is None:
+        return flag_val
+
+    if val in ["False", "True", "false", "true"]:
+        if val.lower() == "true":
+            return flag_val
+        else:
+            return not flag_val
+    else:
+        raise CmtParamInvalidFlagValue(name, flag_name, val)
+
+
+def _parse_alias(
+    name: str, val: _CmtParamVal
+) -> Union[VALID_ALIAS_CANDIDATES, NoReturn]:
+    if val is None:
+        raise CmtParamMissingValue(name, "alias")
+
+    if val in get_args(VALID_ALIAS_CANDIDATES):
+        return val  # type: ignore
+    else:
+        raise CmtParamInvalidAlias(name, "alias", val)
+
+
+def _parse_show_default(
+    name: str, val: _CmtParamVal, flag_val: bool
+) -> Union[bool, NoReturn]:
+    return _parse_flag_generic(name, "hide_result", val, flag_val)
+
+
+def parse_anno_cmt_params(
+    args: Dict[str, ArgOption]
+) -> Union[NamedValidParams, NoReturn]:
+    named_param: NamedValidParams = {}
+    for name, opt in args.items():
+        params: ValidParams = {}
+        for key, val in opt["cmt_params"].items():
+            if False:
+                ...
+            # @alias
+            elif key == "alias":
+                params["alias"] = _parse_alias(name, val)
+            # @hide_default
+            elif key == "hide_default":
+                params["show_default"] = _parse_show_default(
+                    name,
+                    val,
+                    flag_val=False,
+                )
+            # @show_default
+            elif key == "show_default":
+                params["show_default"] = _parse_show_default(
+                    name,
+                    val,
+                    flag_val=True,
+                )
+        named_param[name] = params
+    return named_param
+
+
+# def apply_validparams(cap: Cap, named_params: NamedValidParams) -> None:
+#     ...
