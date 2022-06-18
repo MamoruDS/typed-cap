@@ -67,36 +67,57 @@ def split_by_length(
     add_hyphen: bool = True,
     remove_leading_space: bool = True,
 ) -> List[str]:
-    idx = range(0, len(text), length)
-    if not add_hyphen:
-        return [text[i : i + length] for i in idx]
-    else:
+    text_lns = text.split("\n")
+    if len(text_lns) != 1:
         lns = []
-        i = 0
-        while i < len(text):
-            sub = text[i : i + length]
-            if len(sub) < length:
-                lns.append(sub)
-                break
-            else:
-                # FIXME: potential issue
-                tail = text[i + length - 2 : i + length + 1]
-                if remove_leading_space and len(tail) == 3 and tail[2] == " ":
-                    text = join(splice(list(text), i + length, 1), "")
-                else:
-                    m = re.match(r"(?P<S>\s{1})?\w{2,}", tail)
-                    if m is not None:
-                        if m.group("S") is not None:
-                            text = join(
-                                splice(list(text), i + length - 2, 0, " "), ""
-                            )
-                        else:
-                            text = join(
-                                splice(list(text), i + length - 1, 0, "-"), ""
-                            )
-                lns.append(text[i : i + length])
-                i += length
+        for ln in text_lns:
+            lns = [
+                *lns,
+                *split_by_length(
+                    ln,
+                    length,
+                    add_hyphen,
+                    remove_leading_space,
+                ),
+            ]
         return lns
+    else:
+        idx = range(0, len(text), length)
+        if not add_hyphen:
+            return [text[i : i + length] for i in idx]
+        else:
+            lns = []
+            i = 0
+            while i < len(text):
+                sub = text[i : i + length]
+                if len(sub) < length:
+                    lns.append(sub)
+                    break
+                else:
+                    # FIXME: potential issue
+                    tail = text[i + length - 2 : i + length + 1]
+                    if (
+                        remove_leading_space
+                        and len(tail) == 3
+                        and tail[2] == " "
+                    ):
+                        text = join(splice(list(text), i + length, 1), "")
+                    else:
+                        m = re.match(r"(?P<S>\s{1})?\w{2,}", tail)
+                        if m is not None:
+                            if m.group("S") is not None:
+                                text = join(
+                                    splice(list(text), i + length - 2, 0, " "),
+                                    "",
+                                )
+                            else:
+                                text = join(
+                                    splice(list(text), i + length - 1, 0, "-"),
+                                    "",
+                                )
+                    lns.append(text[i : i + length])
+                    i += length
+            return lns
 
 
 D = TypeVar("D")
