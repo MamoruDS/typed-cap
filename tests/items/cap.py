@@ -47,7 +47,7 @@ def test_count_alias_B():
     assert res.count("verbose") == 3
 
 
-def test_extends_typeddict():
+def test_extends():
     class T1(B):
         silent: Optional[bool]
 
@@ -58,3 +58,26 @@ def test_extends_typeddict():
     res = cap.parse(cmd("--depth=-1"))
     assert G(res.val, "silent") == None
     assert G(res.val, "depth") == -1
+
+
+def test_cls_doc_as_about():
+    class T(B):
+        """
+        some description
+        """
+
+        verbose: Optional[bool]
+
+    cap = Cap(T)
+    assert cap._about == "some description"
+
+
+def test_anno_doc_as_about():
+    class T(B):
+        anno: Optional[bool]
+        """
+        anno doc for testing
+        """
+
+    cap = Cap(T)
+    assert cap._args["anno"]["about"] == "anno doc for testing"
