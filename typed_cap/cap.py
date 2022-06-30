@@ -353,6 +353,7 @@ class Cap(Generic[K, T, U]):
     _preset_helper_used: bool
     # cap options
     stop_at_type: Optional[type]
+    _add_helper_help: bool
 
     @staticmethod
     def helpers() -> _Helpers:
@@ -404,9 +405,7 @@ class Cap(Generic[K, T, U]):
                 if show_default is not None:
                     self._args[name]["show_default"] = show_default
 
-        if add_helper_help:
-            if self._args.get("help") is None:
-                self.helpers()["arg_help"](self, "help")
+        self._add_helper_help = add_helper_help
 
     def _get_key(self, name: str) -> Union[NoReturn, str]:
         for key, opt in self._args.items():
@@ -524,7 +523,12 @@ class Cap(Generic[K, T, U]):
                     raise err
         return self
 
-    def set_delimiter(self, delimiter: Optional[str]) -> Cap:
+    def set_delimiter(self, delimiter: str) -> Cap:
+        # TODO: re support
+        if len(delimiter) == 0:
+            raise ValueError(
+                "Invalid delimiter; length of delimiter:<str> larger than 0"
+            )
         self._delimiter = RO.Some(delimiter)
         return self
 
@@ -627,11 +631,18 @@ class Cap(Generic[K, T, U]):
                 )
         return self
 
+    def _before_parse(self):
+        if self._add_helper_help:
+            if self._args.get("help") is None:
+                self.helpers()["arg_help"](self, "help")
+
     def parse(
         self,
         argv: List[str] = sys.argv[1:],
         args_parser_options: Optional[ArgsParserOptions] = None,
     ) -> Parsed[T]:
+        self._before_parse()
+
         VALIDATOR.delimiter = self._delimiter
 
         def _is_flag(t: Type) -> bool:
