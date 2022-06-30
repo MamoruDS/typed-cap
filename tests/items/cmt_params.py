@@ -1,0 +1,51 @@
+from tests import CFG, cmd, get_profile
+from typed_cap import Cap
+from typing import List, Optional
+
+
+TEST_PROFILE = get_profile(CFG.cur)
+B = TEST_PROFILE.based
+G = TEST_PROFILE.val_getter
+
+
+def test_cmt_param_alias():
+    class T(B):
+        # @alias=v
+        verbose: Optional[bool]
+
+    cap = Cap(T)
+    res = cap.parse(cmd("-v"))
+    assert res.count("verbose") == 1
+
+
+# def test_cmt_param_show_default():
+#     ...
+
+
+def test_cmt_param_hide_default():
+    class T(B):
+        # @alias=d @hide_default
+        max_depth: int
+
+    cap = Cap(T)
+    assert cap._args["max_depth"]["show_default"] == False
+
+
+def test_cmt_param_delimiter():
+    class T(B):
+        # @delimiter=|
+        videos: List[str]
+
+    cap = Cap(T)
+    res = cap.parse(cmd("--videos agility1|ant3"))
+    assert G(res.val, "videos") == ["agility1", "ant3"]
+
+
+def test_cmt_param_none_delimiter():
+    class T(B):
+        # @none_delimiter
+        message: List[str]
+
+    cap = Cap(T)
+    res = cap.parse(cmd("--message foo,bar"))
+    assert G(res.val, "message") == ["foo,bar"]

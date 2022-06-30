@@ -1,14 +1,20 @@
+from enum import Enum
 from typing import (
     Any,
+    Callable,
     Dict,
+    Generic,
     List,
     Literal,
     Optional,
     Tuple,
     Type,
+    TypeVar,
     TypedDict,
     Union,
 )
+
+from typed_cap.utils import RO
 
 
 VALID_ALIAS_CANDIDATES = Literal[
@@ -77,9 +83,34 @@ VALID_ALIAS_CANDIDATES = Literal[
 ]
 
 
-class ArgOpt(TypedDict, total=False):
-    about: str
-    alias: VALID_ALIAS_CANDIDATES
+class BasicArgOption(TypedDict):
+    about: Optional[str]
+    alias: Optional[VALID_ALIAS_CANDIDATES]
+
+
+# C = TypeVar("C", bound=Callable)
+# class ArgOption(BasicArgOption, Generic[C]):
+#     val: Optional[Any]
+#     type: Type
+#     cb: Optional[C]
+#     cb_idx: int
+#     hide: bool
+#     doc: Optional[str]
+#     cmt_params: Dict[str, Optional[str]]
+
+
+class ArgOption(BasicArgOption):
+    val: Optional[Any]
+    type: Type
+    cb: Optional[Callable]
+    cb_idx: int
+    hide: bool
+    #
+    doc: Optional[str]
+    cmt_params: Dict[str, Optional[str]]
+    show_default: bool
+    cls_attr_val: Optional[Any]
+    local_delimiter: RO[str]
 
 
 ArgTypes = Literal["flag", "option"]
@@ -197,6 +228,38 @@ class CapUnknownArg(Exception):
         self.key = key
         self.desc = desc
         super().__init__(*args)
+
+
+class CmtParamError(Exception):
+    name: str
+    param: str
+
+    def __init__(self, name: str, param: str, *args: object) -> None:
+        self.name = name
+        self.param = param
+        super().__init__(*args)
+
+
+class CmtParamInvalidValue(CmtParamError):
+    value: str
+
+    def __init__(
+        self, name: str, param: str, value: str, *args: object
+    ) -> None:
+        self.value = value
+        super().__init__(name, param, *args)
+
+
+class CmtParamMissingValue(CmtParamError):
+    def __init__(self, name: str, param: str, *args: object) -> None:
+        super().__init__(name, param, *args)
+
+
+class CmtParamInvalidFlagValue(CmtParamInvalidValue):
+    def __init__(
+        self, name: str, param: str, value: str, *args: object
+    ) -> None:
+        super().__init__(name, param, value, *args)
 
 
 class Unhandled(Exception):

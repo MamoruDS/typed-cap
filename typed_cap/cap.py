@@ -1,9 +1,10 @@
 from __future__ import annotations
+import inspect
 import json
 import sys
 from typed_cap.types import (
     ArgNamed,
-    ArgOpt,
+    ArgOption,
     ArgTypes,
     ArgsParserKeyError,
     ArgsParserMissingArgument,
@@ -11,6 +12,7 @@ from typed_cap.types import (
     ArgsParserOptions,
     ArgsParserUndefinedParser,
     ArgsParserUnexpectedValue,
+    BasicArgOption,
     CapArgKeyNotFound,
     CapInvalidAlias,
     CapInvalidDefaultValue,
@@ -20,6 +22,7 @@ from typed_cap.types import (
     VALID_ALIAS_CANDIDATES,
 )
 from typed_cap.args_parser import args_parser
+from typed_cap.cmt_param import parse_anno_cmt_params
 from typed_cap.typing import (
     VALIDATOR,
     AnnoExtra,
@@ -30,6 +33,7 @@ from typed_cap.typing import (
     argstyping_parse_extra,
 )
 from typed_cap.utils import (
+    RO,
     flatten,
     get_terminal_width,
     is_T_based,
@@ -37,7 +41,11 @@ from typed_cap.utils import (
     split_by_length,
     unwrap_or,
 )
-from typed_cap.utils.code import get_named_doc
+from typed_cap.utils.code import (
+    get_all_comments_parameters,
+    get_annotations,
+    get_docs_from_annotations,
+)
 from typed_cap.utils.color import Colors, fg
 from typing import (
     Any,
@@ -54,21 +62,15 @@ from typing import (
     TypeVar,
     TypedDict,
     Union,
+    get_args,
 )
 
 
 ArgCallback = Callable[["Cap", List[List]], Union[NoReturn, List[List]]]
 
 
-class _ArgOpt(TypedDict):
-    val: Optional[Any]
-    type: Type
-    about: Optional[str]
-    alias: Optional[VALID_ALIAS_CANDIDATES]
-    cb: Optional[ArgCallback]
-    cb_idx: int
-    hide: bool
-    doc: Optional[str]
+# _ArgOpt = ArgOption[ArgCallback]
+_ArgOpt = ArgOption
 
 
 class _ParsedVal(TypedDict):
@@ -213,16 +215,36 @@ def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
             prefix_width + MIN_ABOUT_WIDTH,
         )
         remain_width = width - prefix_width
+
         for key, ln in arg_lns:
-            about = unwrap_or(c._args[key]["about"], "")
+            about = []
+            if c._args[key]["about"] is not None:
+                about.append(c._args[key]["about"])
+
+            default_val = None
+            if c._args[key]["val"] is None:
+                if c._args[key]["cls_attr_val"] is not None:
+                    default_val = str(c._args[key]["cls_attr_val"])
+            else:
+                default_val = str(c._args[key]["val"])
+            if default_val is not None and c._args[key]["show_default"]:
+                about.append(f"(default: {default_val})")
+
             about = split_by_length(
-                about, remain_width, add_hyphen=True, remove_leading_space=True
+                " ".join(about),
+                remain_width,
+                add_hyphen=True,
+                remove_leading_space=True,
             )
+
+            if len(about) == 0:
+                about = [""]
             for i, abt in enumerate(about):
                 if i == 0:
                     lns.append((1, ln.ljust(max_opt_len + 4) + abt))
                 else:
                     lns.append((1, "".ljust(prefix_width) + abt))
+
         for indent, ln in lns:
             print("".ljust(indent * INDENT_SIZE) + ln)
     exit(0)
@@ -291,6 +313,7 @@ class _Helpers(TypedDict):
     arg_version: _Helper_fn
 
 
+# TODO: remove this
 helpers: _Helpers = {
     "arg_help": helper_arg_help,
     "arg_version": helper_arg_version,
@@ -322,26 +345,67 @@ def colorize_text_t_value(val: Any) -> str:
 class Cap(Generic[K, T, U]):
     _argstype: Type[T]
     _args: Dict[str, _ArgOpt]
-    _delimiter: Optional[str] = ","
     _about: Optional[str]
+    _delimiter: RO[str]
     _name: Optional[str]
     _version: Optional[str]
     _raw_err: bool
     _preset_helper_used: bool
+    # cap options
+    stop_at_type: Optional[type]
+    _add_helper_help: bool
+
+    @staticmethod
+    def helpers() -> _Helpers:
+        return helpers
 
     def __init__(
         self,
         argstype: Type[T],
+        stop_at_type: Optional[type] = None,
+        use_cls_doc_as_about: bool = True,
+        use_anno_doc_as_about: bool = True,
+        use_anno_cmt_params: bool = True,
+        add_helper_help: bool = True,
     ) -> None:
         self._argstype = argstype
         self._args = {}
         self._about = None
+        self._delimiter: RO[str] = RO.Some(",")
         self._name = None
         self._version = None
         self._raw_err = False
         self._preset_helper_used = False
+        #
+        self.stop_at_type = stop_at_type
+        #
         self._parse_argstype()
-        self._parse_docstring()
+        self._parse_anno_details()
+
+        if use_cls_doc_as_about:
+            self._about = inspect.getdoc(self._argstype)
+
+        if use_anno_doc_as_about:
+            for name, opt in self._args.items():
+                self._args[name]["about"] = unwrap_or(opt["about"], opt["doc"])
+
+        if use_anno_cmt_params:
+            named_params = parse_anno_cmt_params(self._args)
+            for name, params in named_params.items():
+                #
+                alias = params.get("alias", None)
+                if alias is not None:
+                    self._set_alias(name, alias)
+                #
+                delimiter = params.get("delimiter", None)
+                if delimiter is not None:
+                    self._args[name]["local_delimiter"] = delimiter
+                #
+                show_default = params.get("show_default", None)
+                if show_default is not None:
+                    self._args[name]["show_default"] = show_default
+
+        self._add_helper_help = add_helper_help
 
     def _get_key(self, name: str) -> Union[NoReturn, str]:
         for key, opt in self._args.items():
@@ -359,6 +423,8 @@ class Cap(Generic[K, T, U]):
             raise CapArgKeyNotFound(key)
         else:
             if alias is not None:
+                # if alias not in get_args(VALID_ALIAS_CANDIDATES):
+                #     raise CapInvalidAlias(key, alias)
                 try:
                     self._get_key(alias)
                     raise CapInvalidAlias(key, alias)
@@ -375,10 +441,14 @@ class Cap(Generic[K, T, U]):
             err_msg = f"{title}: {msg}\n\t{err.__class__.__name__}"
             panic(err_msg)
 
-    def _parse_docstring(self):
-        named_doc = get_named_doc(self._argstype)
-        for name, doc in named_doc:
+    def _parse_anno_details(self):
+        annos = get_annotations(self._argstype, stop_at=self.stop_at_type)
+        named_doc = get_docs_from_annotations(annos)
+        named_cmt_params = get_all_comments_parameters(annos)
+        for name, doc in named_doc.items():
             self._args[name]["doc"] = doc
+        for name, cmt_params in named_cmt_params.items():
+            self._args[name]["cmt_params"] = cmt_params
 
     def _parse_argstype(self):
         typed: Dict[str, Type]
@@ -389,11 +459,20 @@ class Cap(Generic[K, T, U]):
             typed, extra = argstyping_parse_extra(self._argstype)
 
         for key, t in typed.items():
+            attr_val = None
+            try:
+                attr_val = self._argstype.__getattribute__(self._argstype, key)  # type: ignore
+            except AttributeError:
+                ...
+            except TypeError:
+                # TypeError: descriptor '__getattribute__' requires a 'dict' object but received a '_TypedDictMeta'
+                ...
             self.add_argument(
                 key,
                 arg_type=t,
                 callback_priority=0,
                 hide=False,
+                cls_attr_val=attr_val,
                 prevent_overwrite=False,
                 ignore_invalid_alias=False,
             )
@@ -411,6 +490,9 @@ class Cap(Generic[K, T, U]):
         callback: Optional[ArgCallback] = None,
         callback_priority: int = 1,
         hide: bool = False,
+        doc: Optional[str] = None,
+        show_default: bool = True,
+        cls_attr_val: Optional[Any] = None,
         prevent_overwrite: bool = False,
         ignore_invalid_alias: bool = False,
     ) -> Cap:
@@ -425,7 +507,11 @@ class Cap(Generic[K, T, U]):
             "cb": callback,
             "cb_idx": callback_priority,
             "hide": hide,
-            "doc": None,
+            "doc": doc,
+            "cmt_params": {},
+            "show_default": show_default,
+            "cls_attr_val": cls_attr_val,
+            "local_delimiter": RO.NONE(),
         }
         if alias is not None:
             try:
@@ -437,8 +523,13 @@ class Cap(Generic[K, T, U]):
                     raise err
         return self
 
-    def set_delimiter(self, delimiter: Optional[str]) -> Cap:
-        self._delimiter = delimiter
+    def set_delimiter(self, delimiter: str) -> Cap:
+        # TODO: re support
+        if len(delimiter) == 0:
+            raise ValueError(
+                "Invalid delimiter; length of delimiter:<str> larger than 0"
+            )
+        self._delimiter = RO.Some(delimiter)
         return self
 
     def set_callback(
@@ -510,7 +601,7 @@ class Cap(Generic[K, T, U]):
                     )
         return self
 
-    def helper(self, helpers: Dict[K, ArgOpt]) -> Cap:
+    def helper(self, helpers: Dict[K, BasicArgOption]) -> Cap:
         if self._preset_helper_used:
             print(
                 "[warn] detected call of `Cap.helper` after call of preset helpers"
@@ -540,11 +631,20 @@ class Cap(Generic[K, T, U]):
                 )
         return self
 
+    def _before_parse(self):
+        if self._add_helper_help:
+            if self._args.get("help") is None:
+                self.helpers()["arg_help"](self, "help")
+
     def parse(
         self,
         argv: List[str] = sys.argv[1:],
         args_parser_options: Optional[ArgsParserOptions] = None,
     ) -> Parsed[T]:
+        self._before_parse()
+
+        VALIDATOR.delimiter = self._delimiter
+
         def _is_flag(t: Type) -> bool:
             if t == bool:
                 return True
@@ -606,7 +706,14 @@ class Cap(Generic[K, T, U]):
             )
             for v in val:
                 t = opt["type"]
-                valid, v_got, err = VALIDATOR.extract(t, v, cvt=True)
+                temp_delimiter = opt["local_delimiter"]
+                valid, v_got, err = VALIDATOR.extract(
+                    t,
+                    v,
+                    cvt=True,
+                    temp_delimiter=temp_delimiter,
+                    leave_scope=True,
+                )
                 # TODO: catch extract failed
                 if valid:
                     parsed["val"].append([v_got])
@@ -626,10 +733,11 @@ class Cap(Generic[K, T, U]):
         cb_list = sorted(cb_list, key=lambda x: x[1])
         cb_list.reverse()
         for key, _ in cb_list:
-            parsed = parsed_map.get(key)
-            if parsed is None:
+            _p = parsed_map.get(key)
+            if _p is None:
                 continue
             else:
+                parsed = _p
                 if len(parsed["val"]) >= 0:
                     try:
                         arg = self._args[key]

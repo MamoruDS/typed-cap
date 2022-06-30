@@ -153,7 +153,7 @@ def test_option_list_delimiter():
         message: List[str]
 
     cap = Cap(T)
-    cap.set_delimiter("")
+    cap.set_delimiter("\n")
     res = cap.parse(cmd("--message foo,bar"))
     assert G(res.val, "message") == ["foo,bar"]
 
