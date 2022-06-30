@@ -464,7 +464,10 @@ class Cap(Generic[K, T, U]):
             try:
                 attr_val = self._argstype.__getattribute__(self._argstype, key)  # type: ignore
             except AttributeError:
-                pass
+                ...
+            except TypeError:
+                # TypeError: descriptor '__getattribute__' requires a 'dict' object but received a '_TypedDictMeta'
+                ...
             self.add_argument(
                 key,
                 arg_type=t,
