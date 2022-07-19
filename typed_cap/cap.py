@@ -584,7 +584,7 @@ class Cap(Generic[K, T, U]):
             for arg, val in value.items():  # type: ignore
                 try:
                     t = self._args[arg]["type"]
-                    valid, _, _ = VALIDATOR.extract(t, val, cvt=False)
+                    valid, _, _ = VALIDATOR.extract(t, val, cvt=False).unwrap()
                     if valid:
                         self._args[arg]["val"] = val
                     else:
@@ -613,9 +613,10 @@ class Cap(Generic[K, T, U]):
             print(
                 "[warn] detected call of `Cap.helper` after call of preset helpers"
             )
-        for arg, opt in helpers.items():
+        for arg, opt in helpers.items():  # type: ignore
             try:
                 try:
+                    opt: Dict[str, str]
                     alias = opt.pop("alias")
                     self._set_alias(arg, alias)
                 except KeyError:
@@ -725,7 +726,8 @@ class Cap(Generic[K, T, U]):
                     cvt=True,
                     temp_delimiter=temp_delimiter,
                     leave_scope=True,
-                )
+                ).unwrap()
+
                 # TODO: catch extract failed
                 if valid:
                     parsed["val"].append([v_got])

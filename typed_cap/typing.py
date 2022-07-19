@@ -1,13 +1,14 @@
+import json
 from enum import EnumMeta
-from inspect import isclass
 from typed_cap.types import BasicArgOption, VALID_ALIAS_CANDIDATES
-from typed_cap.utils import is_T_based, RO
+from typed_cap.utils import is_T_based, simple_eq, str_eq, RO
 from types import GenericAlias
 from typing import (
     Annotated,
     Any,
     Callable,
     Dict,
+    Generic,
     Iterable,
     List,
     Literal,
@@ -20,6 +21,7 @@ from typing import (
     get_args,
     get_origin,
     get_type_hints,
+    overload,
 )
 
 from typing import (
@@ -30,14 +32,63 @@ from typing import (
 )
 
 
-CLS_Literal: Type = _LiteralGenericAlias
-CLS_None: Type = type(None)
-CLS_Queue: Type = _GenericAlias
-CLS_TypedDict: Type = _TypedDictMeta
-CLS_Union: Type = _UnionGenericAlias
+CLS_Literal = _LiteralGenericAlias
+CLS_None = type(None)
+CLS_Queue = _GenericAlias
+CLS_TypedDict = _TypedDictMeta
+CLS_Union = _UnionGenericAlias
+
+T = TypeVar("T")
 
 
-VALID_RES = Tuple[bool, Optional[Any], Optional[Exception]]
+class ValidRes(Generic[T]):
+    _valid: bool
+    _data: RO[T]
+    _error: RO[Exception]
+
+    def __init__(self) -> None:
+        self._valid = False
+        self._data = RO.NONE()
+        self._error = RO.NONE()
+
+    def some(self, val: T):
+        self._data = RO.Some(val)
+
+    def none(self):
+        self._data = RO.NONE()
+
+    def error(self, err: Exception):
+        self._error = RO.Some(err)
+
+    def valid(self):
+        self._valid = True
+
+    def is_valid(self) -> bool:
+        return self._valid
+
+    @property
+    def data(self) -> RO[T]:
+        return self._data
+
+    @property
+    def value(self) -> Optional[T]:
+        return self._data.value
+
+    def unwrap(self) -> Tuple[bool, Optional[T], RO[Exception]]:
+        return self._valid, self._data.value, self._error
+
+    def __str__(self) -> str:
+        return json.dumps(
+            {
+                "valid": self._valid,
+                "value": self._data.value,
+                "error": self._error.value,
+            },
+            indent=4,
+        )
+
+
+ValidFunc = Callable[["ValidVal", Type[T], Any, bool], ValidRes[T]]
 
 
 class AnnoExtra:
@@ -60,7 +111,7 @@ class TypeInf(TypedDict):
     t: Any
     tt: Any
     c: Any
-    v: Callable[["ValidVal", Type, Any, bool], VALID_RES]
+    v: ValidFunc
 
 
 class ValidVal:
@@ -96,21 +147,43 @@ class ValidVal:
     def delimiter(self, delimiter: RO[str]) -> None:
         self._delimiter = delimiter
 
+    @overload
     def extract(
         self,
-        t: Type,
+        t: str,
         val: Any,
         cvt: bool,
         temp_delimiter: RO[str] = RO.NONE(),
         leave_scope: bool = False,
-    ) -> VALID_RES:
+    ) -> ValidRes:
+        ...
+
+    @overload
+    def extract(
+        self,
+        t: Type[T],
+        val: Any,
+        cvt: bool,
+        temp_delimiter: RO[str] = RO.NONE(),
+        leave_scope: bool = False,
+    ) -> ValidRes[T]:
+        ...
+
+    def extract(
+        self,
+        t: Union[Type[T], str],
+        val: Any,
+        cvt: bool,
+        temp_delimiter: RO[str] = RO.NONE(),
+        leave_scope: bool = False,
+    ):
         # apply all temporal settings
         if temp_delimiter.is_some():
             self._temp_delimiter = temp_delimiter
 
         REG = self.validators
-        res: Optional[VALID_RES] = None
-        if type(t) == str:
+        res: Optional[ValidRes[T]] = None
+        if isinstance(t, str):
             if REG.get(t) is not None:
                 res = REG[t]["v"](self, REG[t]["t"], val, cvt)
         else:
@@ -145,184 +218,170 @@ def annotation_extra(
     return AnnoExtra(about, alias)
 
 
-def _valid_none(_vv: ValidVal, t: CLS_None, val: Any, _cvt: bool) -> VALID_RES:
-    b = False
-    v = None
+def _valid_none(_vv: ValidVal, t: CLS_None, val: Any, _cvt: bool):
+    v = ValidRes[None]()
     if type(val) == t:
-        v = val
-        b = True
-    return b, v, None
+        v.some(None)
+        v.valid()
+    return v
 
 
-def _valid_bool(_vv: ValidVal, _t: Any, val: Any, cvt: bool) -> VALID_RES:
-    b = False
-    v = None
+def _valid_bool(_vv: ValidVal, _t: Any, val: Any, cvt: bool):
+    v = ValidRes[bool]()
     if cvt:
         if val in [
             0,
             "false",
             "False",
         ]:  # TODO: custom valid values
-            v = False
-            b = True
+            v.some(False)
+            v.valid()
         elif val in [
             1,
             "true",
             "True",
         ]:  # TODO: custom valid values
-            v = True
-            b = True
+            v.some(True)
+            v.valid()
     else:
-        if type(val) == bool:
-            v = val
-            b = True
-    return b, v, None
+        if isinstance(val, bool):
+            v.some(val)
+            v.valid()
+    return v
 
 
-def _valid_int(_vv: ValidVal, _t: Any, val: Any, cvt: bool) -> VALID_RES:
-    b = False
-    v = None
-    e = None
+def _valid_int(_vv: ValidVal, _t: Any, val: Any, cvt: bool):
+    v = ValidRes[int]()
     if cvt:
         try:
-            v = int(val)
-            b = True
+            v.some(int(val))
+            v.valid()
         except Exception as err:
-            e = err
+            v.error(err)
     else:
-        if type(val) == int:
-            v = val
-            b = True
-    return b, v, e
+        if isinstance(val, int):
+            v.some(val)
+            v.valid()
+    return v
 
 
-def _valid_float(_vv: ValidVal, _t: Any, val: Any, cvt: bool) -> VALID_RES:
-    b = False
-    v = None
-    e = None
+def _valid_float(_vv: ValidVal, _t: Any, val: Any, cvt: bool):
+    v = ValidRes[float]()
     if cvt:
         try:
-            v = float(val)
-            b = True
+            v.some(float(val))
+            v.valid()
         except Exception as err:
-            e = err
+            v.error(err)
     else:
-        if type(val) == float:
-            v = val
-            b = True
-    return b, v, e
+        if isinstance(val, float):
+            v.some(val)
+            v.valid()
+    return v
 
 
-def _valid_str(_vv: ValidVal, _t: Any, val: Any, cvt: bool) -> VALID_RES:
-    b = False
-    v = None
-    e = None
+def _valid_str(_vv: ValidVal, _t: Any, val: Any, cvt: bool):
+    v = ValidRes[str]()
     if cvt:
         try:
-            v = str(val)
-            b = True
+            v.some(str(val))
+            v.valid()
         except Exception as err:
-            e = err
+            v.error(err)
     else:
-        if type(val) == str:
-            v = val
-            b = True
-    return b, v, e
+        if isinstance(val, str):
+            v.some(val)
+            v.valid()
+    return v
 
 
-def _valid_union(vv: ValidVal, t: CLS_Union, val: Any, cvt: bool) -> VALID_RES:
-    b = False
-    v = None
-    e = None
+def _valid_union(vv: ValidVal, t: CLS_Union, val: Any, cvt: bool):
+    v = ValidRes[CLS_Union]()
     opts = get_args(t)
     for opt in opts:
-        res = vv.extract(opt, val, cvt)
-        if res[0]:
-            return res
-    return b, v, e
+        v_got = vv.extract(opt, val, cvt)
+        if v_got.is_valid():
+            return v_got
+    return v
 
 
-def _valid_queue(vv: ValidVal, t: CLS_Queue, val: Any, cvt: bool) -> VALID_RES:
-    b = False
-    v = None
-    e = None
+def _valid_queue(vv: ValidVal, t: CLS_Queue, val: Any, cvt: bool):
+    v = ValidRes[CLS_Queue]()
     loc_type = get_origin(t)
     if type(val) == loc_type:
-        elements: Union[Tuple, List] = val  # type: ignore
+        elements: Union[Tuple, List] = val
         opts = get_args(t)
         arr = []
         if loc_type == tuple and len(opts) == len(elements):
             for opt, ele in zip(opts, elements):
-                res = vv.extract(opt, ele, cvt)
-                if res[0]:
-                    arr.append(res[1])
+                v_got = vv.extract(opt, ele, cvt)
+                if v_got.is_valid():
+                    arr.append(v_got.value)
                 else:
                     arr = None
+                    break
 
         elif loc_type == list:
             arr = []
             opt = opts[0]
             for ele in elements:
-                res = vv.extract(opt, ele, cvt)
-                if res[0]:
-                    arr.append(res[1])
+                v_got = vv.extract(opt, ele, cvt)
+                if v_got.is_valid():
+                    arr.append(v_got.value)
                 else:
                     arr = None
+                    break
 
         if arr is not None:
-            b = True
-            v = arr
+            v.valid()
             if loc_type == tuple:
-                v = tuple(v)
+                arr = tuple(arr)
+            v.some(arr)
     elif cvt and type(val) == str and vv.delimiter.is_some():
         # TODO: vv.delimiter is always "has some"
         arr = val.split(vv.delimiter.value)
         if loc_type == tuple:
             arr = tuple(arr)
         return vv.extract(t, arr, cvt)
-    return b, v, e
+    return v
 
 
-def _valid_literal(
-    vv: ValidVal, t: CLS_Literal, val: Any, cvt: bool
-) -> VALID_RES:
-    b = False
-    v = None
-    e = None
+def _valid_literal(vv: ValidVal, t: CLS_Literal, val: Any, cvt: bool):
+    v = ValidRes[CLS_Literal]()
     candidates = get_args(t)
     if cvt:
         for can in candidates:
             cvt_res = vv.extract(type(can), val, cvt)
-            if cvt_res[0]:
-                v = cvt_res[1]
-                b = True
+            if cvt_res.is_valid():
+                v._data = cvt_res._data
+                v.valid()
     else:
         if val in candidates:
-            v = val
-            b = True
-    return b, v, e
+            v.some(val)
+            v.valid()
+    return v
 
 
-def _valid_enum(vv: ValidVal, t: EnumMeta, val: Any, _cvt: bool) -> VALID_RES:
-    b = False
-    v = None
-    e = None
+def _valid_enum(vv: ValidVal, t: EnumMeta, val: Any, _cvt: bool):
+    v = ValidRes[EnumMeta]()
     try:
         on_val = vv.attributes.get("enum_on_value", False)
+        cs = False  # case sensitive
         ms = list(t)  # type: ignore
         for m in ms:
-            if (
-                (not on_val and val == m.name)
-                or (on_val and val == m.value)
-                or (on_val and int(val) == m.value)
-            ):
-                v = m
-                b = True
-                break
-    except:
-        ...
-
-    return b, v, e
+            if on_val:
+                v_got = vv.extract(type(m.value), val, cvt=True)
+                if simple_eq(v_got.value, m.value):
+                    v.some(m)
+                    v.valid()
+            else:
+                v_got = vv.extract(str, val, cvt=True)
+                if v_got.valid and str_eq(v_got.value, m.name, cs):
+                    v.some(m)
+                    v.valid()
+    except Exception as err:
+        v.error(err)
+    return v
 
 
 VALIDATOR = ValidVal(
@@ -441,7 +500,7 @@ def get_type_candidates(t: Type[OT]) -> Tuple[Type[OT]]:
         raise Exception()  # TODO:
 
 
-def argstyping_parse(t: Type) -> Dict[str, Type]:
+def argstyping_parse(t: Type[T]) -> Dict[str, Type[T]]:
     if is_T_based(t) not in [dict, object]:
         raise Exception(
             "t should a `typing.TypedDict` or a `class` for parsing"
@@ -471,7 +530,7 @@ def argstyping_parse(t: Type) -> Dict[str, Type]:
     return typed
 
 
-def argstyping_parse_extra(t: Type):
+def argstyping_parse_extra(t: Type[T]):
     key_dict = get_type_hints(t, include_extras=True)
     extra: Dict[str, AnnoExtra] = {}
     for key, anno in key_dict.items():
