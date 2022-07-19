@@ -26,6 +26,7 @@ from typed_cap.cmt_param import parse_anno_cmt_params
 from typed_cap.typing import (
     VALIDATOR,
     AnnoExtra,
+    ValidVal,
     get_optional_candidates,
     get_queue_type,
     get_type_candidates,
@@ -407,7 +408,9 @@ class Cap(Generic[K, T, U]):
                 if delimiter is not None:
                     self._args[name]["local_delimiter"] = delimiter
                 #
-                self._attributes['enum_on_value'] = params.get("enum_on_value", False) 
+                self._attributes["enum_on_value"] = params.get(
+                    "enum_on_value", False
+                )
 
         self._add_helper_help = add_helper_help
 
@@ -644,11 +647,15 @@ class Cap(Generic[K, T, U]):
         self,
         argv: List[str] = sys.argv[1:],
         args_parser_options: Optional[ArgsParserOptions] = None,
+        validator: Optional[ValidVal] = None,
     ) -> Parsed[T]:
         self._before_parse()
 
-        VALIDATOR.delimiter = self._delimiter
-        VALIDATOR.attributes = self._attributes
+        if validator is None:
+            validator = VALIDATOR
+
+        validator.delimiter = self._delimiter
+        validator.attributes = self._attributes
 
         def _is_flag(t: Type) -> bool:
             if t == bool:
@@ -712,7 +719,7 @@ class Cap(Generic[K, T, U]):
             for v in val:
                 t = opt["type"]
                 temp_delimiter = opt["local_delimiter"]
-                valid, v_got, err = VALIDATOR.extract(
+                valid, v_got, err = validator.extract(
                     t,
                     v,
                     cvt=True,
