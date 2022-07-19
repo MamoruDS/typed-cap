@@ -306,7 +306,7 @@ class _Helper_fn(Protocol):
         name: str,
         alias: Optional[VALID_ALIAS_CANDIDATES] = None,
     ) -> None:
-        pass
+        ...
 
 
 class _Helpers(TypedDict):
@@ -524,9 +524,7 @@ class Cap(Generic[K, T, U]):
             try:
                 self._set_alias(key, alias)
             except CapInvalidAlias as err:
-                if ignore_invalid_alias:
-                    pass
-                else:
+                if not ignore_invalid_alias:
                     raise err
         return self
 
@@ -620,7 +618,7 @@ class Cap(Generic[K, T, U]):
                     alias = opt.pop("alias")
                     self._set_alias(arg, alias)
                 except KeyError:
-                    pass
+                    ...
                 self._args[arg] = {**self._args[arg], **opt}  # type: ignore[misc]
 
             except KeyError as err:
@@ -791,7 +789,7 @@ class Cap(Generic[K, T, U]):
                                 "default_val"
                             ] = args_obj.__getattribute__(key)
                         except AttributeError:
-                            pass
+                            ...
                     if (
                         parsed_map[key]["default_val"] is None
                         and get_optional_candidates(opt["type"]) is None

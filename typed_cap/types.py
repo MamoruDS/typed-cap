@@ -195,11 +195,11 @@ class _CapInvalidValue(Exception):
 
 
 class CapInvalidValue(_CapInvalidValue):
-    pass
+    ...
 
 
 class CapInvalidDefaultValue(_CapInvalidValue):
-    pass
+    ...
 
 
 class CapInvalidAlias(Exception):

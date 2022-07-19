@@ -337,7 +337,7 @@ def _valid_queue(vv: ValidVal, t: CLS_Queue, val: Any, cvt: bool):
             if loc_type == tuple:
                 arr = tuple(arr)
             v.some(arr)
-    elif cvt and type(val) == str and vv.delimiter.is_some():
+    elif cvt and isinstance(val, str) and vv.delimiter.is_some():
         # TODO: vv.delimiter is always "has some"
         arr = val.split(vv.delimiter.value)
         if loc_type == tuple:
