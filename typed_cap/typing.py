@@ -1,3 +1,4 @@
+from enum import EnumMeta
 from inspect import isclass
 from typed_cap.types import BasicArgOption, VALID_ALIAS_CANDIDATES
 from typed_cap.utils import is_T_based, RO
@@ -63,6 +64,7 @@ class TypeInf(TypedDict):
 
 
 class ValidVal:
+    attributes: Dict[str, Any]
     validators: Dict[str, TypeInf]
     _delimiter: RO[str]
 
@@ -70,6 +72,7 @@ class ValidVal:
     _temp_delimiter: RO[str]
 
     def __init__(self, validators: Dict[str, TypeInf]) -> None:
+        self.attributes = {}
         self.validators = validators
         self._delimiter = RO.Some(",")
         self._temp_delimiter = RO.NONE()
@@ -300,6 +303,24 @@ def _valid_literal(
     return b, v, e
 
 
+def _valid_enum(vv: ValidVal, t: EnumMeta, val: Any, _cvt: bool) -> VALID_RES:
+    b = False
+    v = None
+    e = None
+    try:
+        on_val = vv.attributes.get("enum_eval_on_value", False)
+        ms = list(t)  # type: ignore
+        for m in ms:
+            if (on_val and val == m.value) or (not on_val and val == m.name):
+                v = m
+                b = True
+                break
+    except:
+        ...
+
+    return b, v, e
+
+
 VALIDATOR = ValidVal(
     {
         "bool": {
@@ -349,6 +370,12 @@ VALIDATOR = ValidVal(
             "tt": None,
             "c": CLS_Literal,
             "v": _valid_literal,
+        },
+        "enum": {
+            "t": None,
+            "tt": EnumMeta,
+            "c": EnumMeta,
+            "v": _valid_enum,
         },
     }
 )
