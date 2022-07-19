@@ -1,3 +1,4 @@
+from enum import Enum
 from tests import CFG, cmd, get_profile
 from typed_cap import Cap
 from typing import List, Optional
@@ -49,3 +50,17 @@ def test_cmt_param_none_delimiter():
     cap = Cap(T)
     res = cap.parse(cmd("--message foo,bar"))
     assert G(res.val, "message") == ["foo,bar"]
+
+
+def test_cmt_param_enum_on_val():
+    class CoinFlip(Enum):
+        head = 0
+        tail = 1
+
+    class T(B):
+        # @enum_on_value
+        flip: CoinFlip
+
+    cap = Cap(T)
+    res = cap.parse(cmd("--flip 1"))
+    assert G(res.val, "flip") == CoinFlip.tail

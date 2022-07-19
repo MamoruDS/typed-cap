@@ -1,3 +1,4 @@
+from enum import Enum, IntEnum
 from tests import CFG, cmd, get_profile
 from typed_cap import Cap
 from typed_cap.types import ArgsParserKeyError
@@ -165,7 +166,6 @@ def test_option_mix_A():
 
     cap = Cap(T)
     res = cap.parse(cmd("--data=a,b,5,false"))
-    # FIXME:
     assert G(res.val, "data") != (["a", "b"], 5.0, False)
 
 
@@ -176,8 +176,46 @@ def test_option_mix_B():
 
     cap = Cap(T)
     res = cap.parse(cmd("--data=5,false,a,5"))
-    # FIXME:
     assert G(res.val, "data") != (5.0, False, ("a", 5))
+
+
+def test_option_enum_A():
+    class CoinFlip(Enum):
+        Head = 0
+        Tail = 1
+
+    class T(B):
+        flip: CoinFlip
+
+    cap = Cap(T)
+    res = cap.parse(cmd("--flip head"))
+    assert G(res.val, "flip") == CoinFlip.Head
+
+def test_option_enum_B():
+    class CoinFlip(IntEnum):
+        Head = 0
+        Tail = 1
+
+    class T(B):
+        flip: CoinFlip
+
+    cap = Cap(T)
+    cap._attributes["enum_on_value"] = True
+    res = cap.parse(cmd("--flip 0"))
+    assert G(res.val, "flip") == CoinFlip.Head
+
+def test_option_enum_C():
+    class CoinFlip(Enum):
+        Head = 'h'
+        Tail = 't'
+
+    class T(B):
+        flip: CoinFlip
+
+    cap = Cap(T)
+    cap._attributes["enum_on_value"] = True
+    res = cap.parse(cmd("--flip t"))
+    assert G(res.val, "flip") == CoinFlip.Tail
 
 
 # test for alt bool
