@@ -16,6 +16,7 @@ from typing import (
 
 
 T = TypeVar("T")
+S = TypeVar("S", bound=Union[str, int, float, bool])
 
 
 class RO(Generic[T]):
@@ -147,6 +148,22 @@ def split_by_length(
                     lns.append(text[i : i + length])
                     i += length
             return lns
+
+
+def str_eq(
+    lhs: Optional[str], rhs: Optional[str], case_sensitive: bool
+) -> bool:
+    if lhs is None or rhs is None:
+        return False
+    elif case_sensitive:
+        return lhs == rhs
+    else:
+        return lhs.lower() == rhs.lower()
+
+
+def simple_eq(lhs: Optional[S], rhs: Optional[S]) -> bool:
+    # prevent typing issue
+    return lhs == rhs
 
 
 D = TypeVar("D")

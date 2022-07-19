@@ -26,6 +26,7 @@ from typed_cap.cmt_param import parse_anno_cmt_params
 from typed_cap.typing import (
     VALIDATOR,
     AnnoExtra,
+    ValidVal,
     get_optional_candidates,
     get_queue_type,
     get_type_candidates,
@@ -305,7 +306,7 @@ class _Helper_fn(Protocol):
         name: str,
         alias: Optional[VALID_ALIAS_CANDIDATES] = None,
     ) -> None:
-        pass
+        ...
 
 
 class _Helpers(TypedDict):
@@ -343,6 +344,7 @@ def colorize_text_t_value(val: Any) -> str:
 
 
 class Cap(Generic[K, T, U]):
+    _attributes: Dict[str, Any]
     _argstype: Type[T]
     _args: Dict[str, _ArgOpt]
     _about: Optional[str]
@@ -368,6 +370,7 @@ class Cap(Generic[K, T, U]):
         use_anno_cmt_params: bool = True,
         add_helper_help: bool = True,
     ) -> None:
+        self._attributes = {}
         self._argstype = argstype
         self._args = {}
         self._about = None
@@ -397,13 +400,17 @@ class Cap(Generic[K, T, U]):
                 if alias is not None:
                     self._set_alias(name, alias)
                 #
+                show_default = params.get("show_default", None)
+                if show_default is not None:
+                    self._args[name]["show_default"] = show_default
+                #
                 delimiter = params.get("delimiter", None)
                 if delimiter is not None:
                     self._args[name]["local_delimiter"] = delimiter
                 #
-                show_default = params.get("show_default", None)
-                if show_default is not None:
-                    self._args[name]["show_default"] = show_default
+                self._attributes["enum_on_value"] = params.get(
+                    "enum_on_value", False
+                )
 
         self._add_helper_help = add_helper_help
 
@@ -517,9 +524,7 @@ class Cap(Generic[K, T, U]):
             try:
                 self._set_alias(key, alias)
             except CapInvalidAlias as err:
-                if ignore_invalid_alias:
-                    pass
-                else:
+                if not ignore_invalid_alias:
                     raise err
         return self
 
@@ -577,7 +582,7 @@ class Cap(Generic[K, T, U]):
             for arg, val in value.items():  # type: ignore
                 try:
                     t = self._args[arg]["type"]
-                    valid, _, _ = VALIDATOR.extract(t, val, cvt=False)
+                    valid, _, _ = VALIDATOR.extract(t, val, cvt=False).unwrap()
                     if valid:
                         self._args[arg]["val"] = val
                     else:
@@ -606,13 +611,14 @@ class Cap(Generic[K, T, U]):
             print(
                 "[warn] detected call of `Cap.helper` after call of preset helpers"
             )
-        for arg, opt in helpers.items():
+        for arg, opt in helpers.items():  # type: ignore
             try:
                 try:
+                    opt: Dict[str, str]
                     alias = opt.pop("alias")
                     self._set_alias(arg, alias)
                 except KeyError:
-                    pass
+                    ...
                 self._args[arg] = {**self._args[arg], **opt}  # type: ignore[misc]
 
             except KeyError as err:
@@ -640,10 +646,15 @@ class Cap(Generic[K, T, U]):
         self,
         argv: List[str] = sys.argv[1:],
         args_parser_options: Optional[ArgsParserOptions] = None,
+        validator: Optional[ValidVal] = None,
     ) -> Parsed[T]:
         self._before_parse()
 
-        VALIDATOR.delimiter = self._delimiter
+        if validator is None:
+            validator = VALIDATOR
+
+        validator.delimiter = self._delimiter
+        validator.attributes = self._attributes
 
         def _is_flag(t: Type) -> bool:
             if t == bool:
@@ -707,13 +718,14 @@ class Cap(Generic[K, T, U]):
             for v in val:
                 t = opt["type"]
                 temp_delimiter = opt["local_delimiter"]
-                valid, v_got, err = VALIDATOR.extract(
+                valid, v_got, err = validator.extract(
                     t,
                     v,
                     cvt=True,
                     temp_delimiter=temp_delimiter,
                     leave_scope=True,
-                )
+                ).unwrap()
+
                 # TODO: catch extract failed
                 if valid:
                     parsed["val"].append([v_got])
@@ -777,7 +789,7 @@ class Cap(Generic[K, T, U]):
                                 "default_val"
                             ] = args_obj.__getattribute__(key)
                         except AttributeError:
-                            pass
+                            ...
                     if (
                         parsed_map[key]["default_val"] is None
                         and get_optional_candidates(opt["type"]) is None

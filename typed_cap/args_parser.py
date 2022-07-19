@@ -41,7 +41,7 @@ def args_parser(
         elif at == "option":
             named_options.append(an)
         else:
-            pass
+            ...
 
     def get_valid_key(k: str) -> Tuple[str, bool, bool]:
         key = k
