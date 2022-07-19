@@ -308,10 +308,14 @@ def _valid_enum(vv: ValidVal, t: EnumMeta, val: Any, _cvt: bool) -> VALID_RES:
     v = None
     e = None
     try:
-        on_val = vv.attributes.get("enum_eval_on_value", False)
+        on_val = vv.attributes.get("enum_on_value", False)
         ms = list(t)  # type: ignore
         for m in ms:
-            if (on_val and val == m.value) or (not on_val and val == m.name):
+            if (
+                (not on_val and val == m.name)
+                or (on_val and val == m.value)
+                or (on_val and int(val) == m.value)
+            ):
                 v = m
                 b = True
                 break
@@ -388,7 +392,7 @@ def get_optional_candidates(t: Type) -> Optional[Tuple]:
         can.pop(idx)
         return tuple(can)
     except Exception:
-        pass
+        ...
     return None
 
 
@@ -406,7 +410,7 @@ def get_queue_type(
             _t = can[0]
             return get_queue_type(_t)
         else:
-            pass
+            ...
     return None
 
 
@@ -472,12 +476,12 @@ def argstyping_parse_extra(t: Type):
     extra: Dict[str, AnnoExtra] = {}
     for key, anno in key_dict.items():
         if get_origin(anno) is not Annotated:
-            pass
+            ...
         else:
             _, *anno_args = get_args(anno)
             if isinstance(anno_args[0], AnnoExtra):
                 extra[key] = anno_args[0]
             else:
-                pass
+                ...
                 # TODO: warning or error msg?
     return argstyping_parse(t), extra
