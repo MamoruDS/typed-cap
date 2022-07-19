@@ -343,6 +343,7 @@ def colorize_text_t_value(val: Any) -> str:
 
 
 class Cap(Generic[K, T, U]):
+    _attributes: Dict[str, Any]
     _argstype: Type[T]
     _args: Dict[str, _ArgOpt]
     _about: Optional[str]
@@ -368,6 +369,7 @@ class Cap(Generic[K, T, U]):
         use_anno_cmt_params: bool = True,
         add_helper_help: bool = True,
     ) -> None:
+        self._attributes = {}
         self._argstype = argstype
         self._args = {}
         self._about = None
@@ -397,13 +399,15 @@ class Cap(Generic[K, T, U]):
                 if alias is not None:
                     self._set_alias(name, alias)
                 #
+                show_default = params.get("show_default", None)
+                if show_default is not None:
+                    self._args[name]["show_default"] = show_default
+                #
                 delimiter = params.get("delimiter", None)
                 if delimiter is not None:
                     self._args[name]["local_delimiter"] = delimiter
                 #
-                show_default = params.get("show_default", None)
-                if show_default is not None:
-                    self._args[name]["show_default"] = show_default
+                self._attributes['enum_on_value'] = params.get("enum_on_value", False) 
 
         self._add_helper_help = add_helper_help
 
@@ -644,6 +648,7 @@ class Cap(Generic[K, T, U]):
         self._before_parse()
 
         VALIDATOR.delimiter = self._delimiter
+        VALIDATOR.attributes = self._attributes
 
         def _is_flag(t: Type) -> bool:
             if t == bool:

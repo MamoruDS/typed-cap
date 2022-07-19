@@ -16,6 +16,7 @@ class ValidParams(TypedDict, total=False):
     alias: VALID_ALIAS_CANDIDATES
     show_default: bool
     delimiter: RO[str]
+    enum_on_value: bool
 
 
 NamedValidParams = Dict[str, ValidParams]
@@ -96,6 +97,19 @@ def _parse_none_delimiter(
     return RO.Some(None)
 
 
+def _parse_enum_on_value(
+    name: str, val: _CmtParamVal
+) -> Union[bool, NoReturn]:
+    _parse_flag_generic(
+        name,
+        "enum_on_value",
+        val,
+        flag_val=True,
+        allow_val=False,
+    )
+    return True
+
+
 def parse_anno_cmt_params(
     args: Dict[str, ArgOption]
 ) -> Union[NamedValidParams, NoReturn]:
@@ -132,6 +146,13 @@ def parse_anno_cmt_params(
             # @none_delimiter
             elif key == "none_delimiter":
                 params["delimiter"] = _parse_none_delimiter(
+                    name,
+                    val,
+                )
+
+            # @enum_on_value
+            elif key == "enum_on_value":
+                params["enum_on_value"] = _parse_enum_on_value(
                     name,
                     val,
                 )
