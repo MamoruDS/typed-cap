@@ -16,10 +16,10 @@ def test_flag():
 
     cap = Cap(T)
     res = cap.parse(cmd("--silent"))
-    assert G(res.val, "silent") == True
+    assert G(res.args, "silent") == True
 
     res = cap.parse(cmd(""))
-    assert G(res.val, "silent") is None
+    assert G(res.args, "silent") is None
 
 
 def test_flag_multi():
@@ -30,9 +30,9 @@ def test_flag_multi():
 
     cap = Cap(T)
     res = cap.parse(cmd("--silent --all"))
-    assert G(res.val, "silent") == True
-    assert G(res.val, "human_readable") is None
-    assert G(res.val, "all") == True
+    assert G(res.args, "silent") == True
+    assert G(res.args, "human_readable") is None
+    assert G(res.args, "all") == True
 
 
 def test_flag_alias_A():
@@ -50,9 +50,9 @@ def test_flag_alias_A():
         }
     )
     res = cap.parse(cmd("-s -a"))
-    assert G(res.val, "silent") == True
-    assert G(res.val, "human_readable") is None
-    assert G(res.val, "all") == True
+    assert G(res.args, "silent") == True
+    assert G(res.args, "human_readable") is None
+    assert G(res.args, "all") == True
 
 
 def test_flag_alias_B():
@@ -70,9 +70,9 @@ def test_flag_alias_B():
         }
     )
     res = cap.parse(cmd("-ah"))
-    assert G(res.val, "silent") is None
-    assert G(res.val, "human_readable") == True
-    assert G(res.val, "all") == True
+    assert G(res.args, "silent") is None
+    assert G(res.args, "human_readable") == True
+    assert G(res.args, "all") == True
 
 
 def test_option_str_A():
@@ -81,7 +81,7 @@ def test_option_str_A():
 
     cap = Cap(T)
     res = cap.parse(cmd("--name foo"))
-    assert G(res.val, "name") == "foo"
+    assert G(res.args, "name") == "foo"
 
 
 def test_option_str_B():
@@ -90,7 +90,7 @@ def test_option_str_B():
 
     cap = Cap(T)
     res = cap.parse(cmd("--name=bar"))
-    assert G(res.val, "name") == "bar"
+    assert G(res.args, "name") == "bar"
 
 
 def test_option_number_A():
@@ -99,7 +99,7 @@ def test_option_number_A():
 
     cap = Cap(T)
     res = cap.parse(cmd("--age=10"))
-    assert G(res.val, "age") == 10
+    assert G(res.args, "age") == 10
 
 
 def test_option_number_B():
@@ -108,7 +108,7 @@ def test_option_number_B():
 
     cap = Cap(T)
     res = cap.parse(cmd("--ratio 3.14"))
-    assert G(res.val, "ratio") == 3.14
+    assert G(res.args, "ratio") == 3.14
 
 
 def test_option_tuple_A():
@@ -117,7 +117,7 @@ def test_option_tuple_A():
 
     cap = Cap(T)
     res = cap.parse(cmd("--member foo,25"))
-    assert G(res.val, "member") == ("foo", 25)
+    assert G(res.args, "member") == ("foo", 25)
 
 
 def test_option_tuple_B():
@@ -126,7 +126,7 @@ def test_option_tuple_B():
 
     cap = Cap(T)
     res = cap.parse(cmd("--member bar,25"))
-    assert G(res.val, "member") == ("bar", 25.0)
+    assert G(res.args, "member") == ("bar", 25.0)
 
 
 def test_option_list_A():
@@ -135,7 +135,7 @@ def test_option_list_A():
 
     cap = Cap(T)
     res = cap.parse(cmd("--message foo,bar"))
-    assert G(res.val, "message") == ["foo", "bar"]
+    assert G(res.args, "message") == ["foo", "bar"]
 
 
 def test_option_list_B():
@@ -144,7 +144,7 @@ def test_option_list_B():
 
     cap = Cap(T)
     res = cap.parse(cmd("--message foo --message bar"))
-    assert G(res.val, "message") == ["foo", "bar"]
+    assert G(res.args, "message") == ["foo", "bar"]
 
 
 # FIXME: global delimiter not working
@@ -156,7 +156,7 @@ def test_option_list_delimiter():
     cap = Cap(T)
     cap.set_delimiter("\n")
     res = cap.parse(cmd("--message foo,bar"))
-    assert G(res.val, "message") == ["foo,bar"]
+    assert G(res.args, "message") == ["foo,bar"]
 
 
 # TODO: tuple length determining
@@ -166,7 +166,7 @@ def test_option_mix_A():
 
     cap = Cap(T)
     res = cap.parse(cmd("--data=a,b,5,false"))
-    assert G(res.val, "data") != (["a", "b"], 5.0, False)
+    assert G(res.args, "data") != (["a", "b"], 5.0, False)
 
 
 # TODO: tuple length determining
@@ -176,7 +176,7 @@ def test_option_mix_B():
 
     cap = Cap(T)
     res = cap.parse(cmd("--data=5,false,a,5"))
-    assert G(res.val, "data") != (5.0, False, ("a", 5))
+    assert G(res.args, "data") != (5.0, False, ("a", 5))
 
 
 def test_option_enum_A():
@@ -189,7 +189,7 @@ def test_option_enum_A():
 
     cap = Cap(T)
     res = cap.parse(cmd("--flip head"))
-    assert G(res.val, "flip") == CoinFlip.Head
+    assert G(res.args, "flip") == CoinFlip.Head
 
 def test_option_enum_B():
     class CoinFlip(IntEnum):
@@ -202,7 +202,7 @@ def test_option_enum_B():
     cap = Cap(T)
     cap._attributes["enum_on_value"] = True
     res = cap.parse(cmd("--flip 0"))
-    assert G(res.val, "flip") == CoinFlip.Head
+    assert G(res.args, "flip") == CoinFlip.Head
 
 def test_option_enum_C():
     class CoinFlip(Enum):
@@ -215,7 +215,7 @@ def test_option_enum_C():
     cap = Cap(T)
     cap._attributes["enum_on_value"] = True
     res = cap.parse(cmd("--flip t"))
-    assert G(res.val, "flip") == CoinFlip.Tail
+    assert G(res.args, "flip") == CoinFlip.Tail
 
 
 # test for alt bool
@@ -229,10 +229,10 @@ def test_arguments_A():
 
     cap = Cap(T)
     res = cap.parse(cmd("--all --human-readable --max-depth=1 /usr/bin"))
-    assert G(res.val, "all") == True
-    assert G(res.val, "human_readable") == True
-    assert G(res.val, "max_depth") == 1
-    assert res.args == ["/usr/bin"]
+    assert G(res.args, "all") == True
+    assert G(res.args, "human_readable") == True
+    assert G(res.args, "max_depth") == 1
+    assert res.argv == ["/usr/bin"]
 
 
 # test for parser options

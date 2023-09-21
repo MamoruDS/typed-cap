@@ -119,11 +119,11 @@ class Parsed(Generic[T]):
         return self._args
 
     @property
-    def args(self) -> List[str]:
+    def argv(self) -> List[str]:
         return self.arguments
 
     @property
-    def value(self) -> T:
+    def args(self) -> T:
         val: T
         gvc: _GVCS
         t_based = get_based(self._argstype)
@@ -152,7 +152,13 @@ class Parsed(Generic[T]):
         return val
 
     @property
+    def value(self) -> T:
+        """deprecated; use `args` instead"""
+        return self.args
+
+    @property
     def val(self) -> T:
+        """deprecated; use `args` instead"""
         return self.value
 
     def count(self, name: str) -> int:
@@ -766,8 +772,8 @@ class Cap(Generic[K, T, U]):
         args_obj: Optional[T] = None
         t_based = get_based(self._argstype)
         if t_based is BasedType.OBJECT:
-            # args_obj = self._argstype.__new__(self._argstype)
-            args_obj = self._argstype()
+            args_obj = self._argstype.__new__(self._argstype)
+            # args_obj = self._argstype()
         for key, opt in self._args.items():
             if opt["hide"]:
                 if parsed_map.get(key) is not None:

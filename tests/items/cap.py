@@ -56,8 +56,8 @@ def test_extends():
 
     cap = Cap(T2)
     res = cap.parse(cmd("--depth=-1"))
-    assert G(res.val, "silent") == None
-    assert G(res.val, "depth") == -1
+    assert G(res.args, "silent") == None
+    assert G(res.args, "depth") == -1
 
 
 def test_cls_doc_as_about():

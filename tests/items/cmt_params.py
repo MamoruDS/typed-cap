@@ -39,7 +39,7 @@ def test_cmt_param_delimiter():
 
     cap = Cap(T)
     res = cap.parse(cmd("--videos agility1|ant3"))
-    assert G(res.val, "videos") == ["agility1", "ant3"]
+    assert G(res.args, "videos") == ["agility1", "ant3"]
 
 
 def test_cmt_param_none_delimiter():
@@ -49,7 +49,7 @@ def test_cmt_param_none_delimiter():
 
     cap = Cap(T)
     res = cap.parse(cmd("--message foo,bar"))
-    assert G(res.val, "message") == ["foo,bar"]
+    assert G(res.args, "message") == ["foo,bar"]
 
 
 def test_cmt_param_enum_on_val():
@@ -63,4 +63,4 @@ def test_cmt_param_enum_on_val():
 
     cap = Cap(T)
     res = cap.parse(cmd("--flip 1"))
-    assert G(res.val, "flip") == CoinFlip.tail
+    assert G(res.args, "flip") == CoinFlip.tail
