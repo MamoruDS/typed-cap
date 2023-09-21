@@ -1,8 +1,13 @@
+import sys
 from enum import Enum, IntEnum
-from tests import CFG, cmd, get_profile
+from typing import List, Optional, Tuple
+
+import pytest
+
 from typed_cap import Cap
 from typed_cap.types import ArgsParserKeyError
-from typing import List, Optional, Tuple
+
+from tests import CFG, cmd, get_profile
 
 
 TEST_PROFILE = get_profile(CFG.cur)
@@ -191,6 +196,7 @@ def test_option_enum_A():
     res = cap.parse(cmd("--flip head"))
     assert G(res.args, "flip") == CoinFlip.Head
 
+
 def test_option_enum_B():
     class CoinFlip(IntEnum):
         Head = 0
@@ -204,10 +210,11 @@ def test_option_enum_B():
     res = cap.parse(cmd("--flip 0"))
     assert G(res.args, "flip") == CoinFlip.Head
 
+
 def test_option_enum_C():
     class CoinFlip(Enum):
-        Head = 'h'
-        Tail = 't'
+        Head = "h"
+        Tail = "t"
 
     class T(B):
         flip: CoinFlip

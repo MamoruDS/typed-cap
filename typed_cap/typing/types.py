@@ -1,4 +1,3 @@
-from typing import Literal
 from typing import (
     _GenericAlias,  # type: ignore
     _LiteralGenericAlias,  # type: ignore

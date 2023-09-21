@@ -1,7 +1,9 @@
 from enum import Enum
-from tests import CFG, cmd, get_profile
-from typed_cap import Cap
 from typing import List, Optional
+
+from typed_cap import Cap
+
+from tests import CFG, cmd, get_profile
 
 
 TEST_PROFILE = get_profile(CFG.cur)

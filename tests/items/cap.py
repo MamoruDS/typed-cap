@@ -1,6 +1,8 @@
-from tests import CFG, cmd, get_profile
-from typed_cap import Cap
 from typing import Optional
+
+from typed_cap import Cap
+
+from tests import CFG, cmd, get_profile
 
 
 TEST_PROFILE = get_profile(CFG.cur)
