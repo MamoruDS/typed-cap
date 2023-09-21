@@ -43,7 +43,6 @@ from .types import (
     VALID_ALIAS_CANDIDATES,
 )
 from .typing import (
-    VALIDATOR,
     AnnoExtra,
     ValidVal,
     get_optional_candidates,
@@ -52,6 +51,7 @@ from .typing import (
     argstyping_parse,
     argstyping_parse_extra,
 )
+from .typing.default import VALIDATOR
 from .utils import (
     RO,
     flatten,
