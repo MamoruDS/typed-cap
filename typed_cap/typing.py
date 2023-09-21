@@ -116,7 +116,7 @@ class TypeInf(TypedDict):
 
 class ValidVal:
     attributes: Dict[str, Any]
-    validators: Dict[str, TypeInf]
+    _validators: Dict[str, TypeInf]
     _delimiter: RO[str]
 
     # temp only
@@ -124,7 +124,7 @@ class ValidVal:
 
     def __init__(self, validators: Dict[str, TypeInf]) -> None:
         self.attributes = {}
-        self.validators = validators
+        self._validators = validators
         self._delimiter = RO.Some(",")
         self._temp_delimiter = RO.NONE()
 
@@ -135,6 +135,10 @@ class ValidVal:
             return None
         except Exception as e:
             raise e
+
+    @property
+    def validators(self) -> Dict[str, TypeInf]:
+        return self._validators
 
     @property
     def delimiter(self) -> RO[str]:
