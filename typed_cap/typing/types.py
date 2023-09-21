@@ -1,3 +1,4 @@
+import sys
 from typing import (
     _GenericAlias,  # type: ignore
     _LiteralGenericAlias,  # type: ignore
@@ -10,4 +11,7 @@ LiteralTType = _LiteralGenericAlias  # type: ignore
 TypedDictTType = _TypedDictMeta  # type: ignore
 UnionTType = _UnionGenericAlias  # type: ignore
 
-NoneType = type(None)
+if sys.version_info >= (3, 10):
+    from types import NoneType
+else:
+    NoneType = type(None)
