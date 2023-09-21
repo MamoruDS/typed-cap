@@ -1,5 +1,5 @@
 import sys
-from enum import EnumMeta
+from enum import EnumMeta, Enum
 from types import GenericAlias
 from typing import (
     Any,
@@ -10,7 +10,6 @@ from typing import (
     get_origin,
 )
 
-from ..utils import str_eq
 from .valid import ValidVal, ValidRes
 from .types import LiteralTType, NoneType, QueueTType, UnionTType
 
@@ -160,21 +159,21 @@ def _valid_literal(vv: ValidVal, t: LiteralTType, val: Any, cvt: bool):
 
 
 def _valid_enum(vv: ValidVal, t: EnumMeta, val: Any, _cvt: bool):
-    v = ValidRes[EnumMeta]()
+    v = ValidRes[Enum]()
     try:
+        # eval member on value or name
         on_val = vv.attributes.get("enum_on_value", False)
-        cs = False  # case sensitive
-        ms = list(t)  # type: ignore
-        for m in ms:
+        for meb in list(t):  # type: ignore
+            meb: Enum
             if on_val:
-                v_got = vv.extract(type(m.value), val, cvt=True)
-                if v_got.value == m.value:
-                    v.some(m)
+                v_got = vv.extract(type(meb.value), val, cvt=True)
+                if v_got.value == meb.value:
+                    v.some(meb)
                     v.valid()
             else:
                 v_got = vv.extract(str, val, cvt=True)
-                if v_got.valid and str_eq(v_got.value, m.name, cs):
-                    v.some(m)
+                if v_got.valid and v_got.value.lower() == meb.name.lower():
+                    v.some(meb)
                     v.valid()
     except Exception as err:
         v.error(err)
