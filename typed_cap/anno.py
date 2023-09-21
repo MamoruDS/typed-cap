@@ -11,7 +11,7 @@ from typing import (
     get_type_hints,
 )
 
-from .types import VALID_ALIAS_CANDIDATES as AliasCandidates
+from .types import AliasCandidates
 from .typing import argstyping_parse
 
 

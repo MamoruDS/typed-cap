@@ -23,6 +23,7 @@ from .anno import AnnoExtra, argstyping_parse_extra
 from .args_parser import args_parser
 from .cmt_param import parse_anno_cmt_params
 from .types import (
+    AliasCandidates,
     ArgNamed,
     ArgOption,
     ArgTypes,
@@ -39,7 +40,6 @@ from .types import (
     CapInvalidValue,
     CapUnknownArg,
     Unhandled,
-    VALID_ALIAS_CANDIDATES,
 )
 from .typing import (
     BasedType,
@@ -268,7 +268,7 @@ def _helper_version_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
 def helper_arg_help(
     cap: "Cap",
     name: str = "help",
-    alias: Optional[VALID_ALIAS_CANDIDATES] = None,
+    alias: Optional[AliasCandidates] = None,
 ):
     cap.add_argument(
         name,
@@ -287,7 +287,7 @@ def helper_arg_help(
 def helper_arg_version(
     cap: "Cap",
     name: str = "version",
-    alias: Optional[VALID_ALIAS_CANDIDATES] = None,
+    alias: Optional[AliasCandidates] = None,
 ):
     cap.add_argument(
         name,
@@ -308,7 +308,7 @@ class _Helper_fn(Protocol):
         self,
         cap: "Cap",
         name: str,
-        alias: Optional[VALID_ALIAS_CANDIDATES] = None,
+        alias: Optional[AliasCandidates] = None,
     ) -> None:
         ...
 
@@ -434,7 +434,7 @@ class Cap(Generic[K, T, U]):
             raise CapArgKeyNotFound(key)
         else:
             if alias is not None:
-                # if alias not in get_args(VALID_ALIAS_CANDIDATES):
+                # if alias not in get_args(AliasCandidates):
                 #     raise CapInvalidAlias(key, alias)
                 try:
                     self._get_key(alias)
@@ -501,7 +501,7 @@ class Cap(Generic[K, T, U]):
         key: str,
         arg_type: Type,
         about: Optional[str] = None,
-        alias: Optional[VALID_ALIAS_CANDIDATES] = None,
+        alias: Optional[AliasCandidates] = None,
         default: Option = Option.NONE(),
         callback: Optional[ArgCallback] = None,
         callback_priority: int = 1,

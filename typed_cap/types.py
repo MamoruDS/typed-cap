@@ -14,7 +14,7 @@ from typing import (
 from .utils.option import Option
 
 
-VALID_ALIAS_CANDIDATES = Literal[
+AliasCandidates = Literal[
     "a",
     "b",
     "c",
@@ -82,18 +82,7 @@ VALID_ALIAS_CANDIDATES = Literal[
 
 class BasicArgOption(TypedDict):
     about: Optional[str]
-    alias: Optional[VALID_ALIAS_CANDIDATES]
-
-
-# C = TypeVar("C", bound=Callable)
-# class ArgOption(BasicArgOption, Generic[C]):
-#     val: Optional[Any]
-#     type: Type
-#     cb: Optional[C]
-#     cb_idx: int
-#     hide: bool
-#     doc: Optional[str]
-#     cmt_params: Dict[str, Optional[str]]
+    alias: Optional[AliasCandidates]
 
 
 class ArgOption(BasicArgOption):

@@ -1,8 +1,8 @@
 from typing import Dict, NoReturn, Optional, TypedDict, Union, get_args
 
 from .types import (
+    AliasCandidates,
     ArgOption,
-    VALID_ALIAS_CANDIDATES,
     CmtParamInvalidFlagValue,
     CmtParamInvalidValue,
     CmtParamMissingValue,
@@ -13,7 +13,7 @@ _CmtParamVal = Optional[str]
 
 
 class ValidParams(TypedDict, total=False):
-    alias: VALID_ALIAS_CANDIDATES
+    alias: AliasCandidates
     show_default: bool
     delimiter: Option[Optional[str]]
     enum_on_value: bool
@@ -44,11 +44,11 @@ def _parse_flag_generic(
 
 def _parse_alias(
     name: str, val: _CmtParamVal
-) -> Union[VALID_ALIAS_CANDIDATES, NoReturn]:
+) -> Union[AliasCandidates, NoReturn]:
     if val is None:
         raise CmtParamMissingValue(name, "alias")
 
-    if val in get_args(VALID_ALIAS_CANDIDATES):
+    if val in get_args(AliasCandidates):
         return val  # type: ignore
     else:
         raise CmtParamInvalidValue(name, "alias", val)
