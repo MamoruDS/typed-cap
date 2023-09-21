@@ -19,6 +19,7 @@ from typing import (
     Union,
 )
 
+from .anno import AnnoExtra, argstyping_parse_extra
 from .args_parser import args_parser
 from .cmt_param import parse_anno_cmt_params
 from .types import (
@@ -41,13 +42,11 @@ from .types import (
     VALID_ALIAS_CANDIDATES,
 )
 from .typing import (
-    AnnoExtra,
     ValidVal,
     get_optional_candidates,
     get_queue_type,
     get_type_candidates,
     argstyping_parse,
-    argstyping_parse_extra,
 )
 from .typing.default import VALIDATOR
 from .utils import (
@@ -483,7 +482,12 @@ class Cap(Generic[K, T, U]):
             )
         if extra is not None:
             _ext: Dict[K, AnnoExtra] = extra  # type: ignore
-            self.helper({k: v.to_helper() for k, v in _ext.items()})
+            self.helper(
+                {
+                    k: {"about": v.about, "alias": v.alias}
+                    for k, v in _ext.items()
+                }
+            )
 
     def add_argument(
         self,

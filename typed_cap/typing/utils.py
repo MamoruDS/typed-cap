@@ -1,5 +1,4 @@
 from typing import (
-    Annotated,
     Dict,
     Iterable,
     Literal,
@@ -13,7 +12,6 @@ from typing import (
     get_type_hints,
 )
 
-from ..types import BasicArgOption, VALID_ALIAS_CANDIDATES
 from ..utils import is_T_based
 from .types import NoneType, TypedDictTType, UnionTType
 
@@ -21,22 +19,6 @@ from .types import NoneType, TypedDictTType, UnionTType
 T = TypeVar("T")
 
 NoneType = type(None)
-
-
-class AnnoExtra:
-    about: Optional[str] = None
-    alias: Optional[VALID_ALIAS_CANDIDATES] = None
-
-    def __init__(
-        self,
-        about: Optional[str],
-        alias: Optional[VALID_ALIAS_CANDIDATES],
-    ) -> None:
-        self.alias = alias
-        self.about = about
-
-    def to_helper(self) -> BasicArgOption:
-        return {"about": self.about, "alias": self.alias}
 
 
 def get_type_candidates(t: Type[T]) -> Tuple[Type[T]]:
@@ -84,13 +66,6 @@ def get_queue_type(
     return None
 
 
-def annotation_extra(
-    alias: Optional[VALID_ALIAS_CANDIDATES] = None,
-    about: Optional[str] = None,
-) -> AnnoExtra:
-    return AnnoExtra(about, alias)
-
-
 def argstyping_parse(t: Type[T]) -> Dict[str, Type[T]]:
     if is_T_based(t) not in [dict, object]:
         raise Exception(
@@ -119,19 +94,3 @@ def argstyping_parse(t: Type[T]) -> Dict[str, Type[T]]:
     for key in keys_opt:
         typed[key] = get_t(key, False)
     return typed
-
-
-def argstyping_parse_extra(t: Type[T]):
-    key_dict = get_type_hints(t, include_extras=True)
-    extra: Dict[str, AnnoExtra] = {}
-    for key, anno in key_dict.items():
-        if get_origin(anno) is not Annotated:
-            ...
-        else:
-            _, *anno_args = get_args(anno)
-            if isinstance(anno_args[0], AnnoExtra):
-                extra[key] = anno_args[0]
-            else:
-                ...
-                # TODO: warning or error msg?
-    return argstyping_parse(t), extra
