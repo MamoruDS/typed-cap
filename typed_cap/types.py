@@ -1,9 +1,11 @@
+from dataclasses import dataclass
 from typing import (
     Any,
     Callable,
     Dict,
     List,
     Literal,
+    NamedTuple,
     Optional,
     Tuple,
     Type,
@@ -80,11 +82,18 @@ AliasCandidates = Literal[
 ]
 
 
-class BasicArgOption(TypedDict):
+class HelperOptions(TypedDict, total=False):
+    alias: Optional[AliasCandidates]
+    about: Optional[str]
+
+
+@dataclass
+class BasicArgOption:
     about: Optional[str]
     alias: Optional[AliasCandidates]
 
 
+@dataclass
 class ArgOption(BasicArgOption):
     val: Option
     type: Type

@@ -26,5 +26,5 @@ def test_anno_about():
         config: Annotated[Optional[bool], ae(None, cfg_about)]
 
     cap = Cap(T)
-    assert cap._args["config"]["alias"] == None
-    assert cap._args["config"]["about"] == cfg_about
+    assert cap._args["config"].alias == None
+    assert cap._args["config"].about == cfg_about

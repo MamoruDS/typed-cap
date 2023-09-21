@@ -118,7 +118,7 @@ def parse_anno_cmt_params(
     named_param: NamedValidParams = {}
     for name, opt in args.items():
         params: ValidParams = {}
-        for key, val in opt["cmt_params"].items():
+        for key, val in opt.cmt_params.items():
             if False:
                 ...
             # @alias

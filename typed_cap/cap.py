@@ -39,6 +39,7 @@ from .types import (
     CapInvalidDefaultValue,
     CapInvalidValue,
     CapUnknownArg,
+    HelperOptions,
     Unhandled,
 )
 from .typing import (
@@ -66,10 +67,8 @@ from .utils.code import (
 from .utils.color import Colors, fg
 from .utils.option import Option
 
+
 ArgCallback = Callable[["Cap", List[List]], Union[NoReturn, List[List]]]
-
-
-_ArgOpt = ArgOption
 
 
 class _ParsedVal(TypedDict):
@@ -205,7 +204,7 @@ def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
         arg_lns: List[Tuple[str, str]] = []
         max_opt_len = 0
         for key, opt in c._args.items():
-            alias = none_or(opt["alias"], "   ")
+            alias = none_or(opt.alias, "   ")
             if len(alias) == 1:
                 alias = f"-{alias},"
             ln = f"{alias}--{key}"
@@ -223,16 +222,16 @@ def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
 
         for key, ln in arg_lns:
             about = []
-            if c._args[key]["about"] is not None:
-                about.append(c._args[key]["about"])
+            if c._args[key].about is not None:
+                about.append(c._args[key].about)
 
             default_val = None
-            if c._args[key]["val"] is None:
-                if c._args[key]["cls_attr_val"] is not None:
-                    default_val = str(c._args[key]["cls_attr_val"])
+            if c._args[key].val is None:
+                if c._args[key].cls_attr_val is not None:
+                    default_val = str(c._args[key].cls_attr_val)
             else:
-                default_val = str(c._args[key]["val"])
-            if default_val is not None and c._args[key]["show_default"]:
+                default_val = str(c._args[key].val)
+            if default_val is not None and c._args[key].show_default:
                 about.append(f"(default: {default_val})")
 
             about = split_by_length(
@@ -350,7 +349,7 @@ def colorize_text_t_value(val: Any) -> str:
 class Cap(Generic[K, T, U]):
     _attributes: Dict[str, Any]
     _argstype: Type[T]
-    _args: Dict[str, _ArgOpt]
+    _args: Dict[str, ArgOption]
     _about: Optional[str]
     _delimiter: Option[Optional[str]]
     _name: Optional[str]
@@ -394,7 +393,7 @@ class Cap(Generic[K, T, U]):
 
         if use_anno_doc_as_about:
             for name, opt in self._args.items():
-                self._args[name]["about"] = none_or(opt["about"], opt["doc"])
+                self._args[name].about = none_or(opt.about, opt.doc)
 
         if use_anno_cmt_params:
             named_params = parse_anno_cmt_params(self._args)
@@ -406,11 +405,11 @@ class Cap(Generic[K, T, U]):
                 #
                 show_default = params.get("show_default", None)
                 if show_default is not None:
-                    self._args[name]["show_default"] = show_default
+                    self._args[name].show_default = show_default
                 #
                 delimiter = params.get("delimiter", None)
                 if delimiter is not None:
-                    self._args[name]["local_delimiter"] = delimiter
+                    self._args[name].local_delimiter = delimiter
                 #
                 self._attributes["enum_on_value"] = params.get(
                     "enum_on_value", False
@@ -422,12 +421,12 @@ class Cap(Generic[K, T, U]):
         for key, opt in self._args.items():
             if key == name:
                 return key
-            if opt["alias"] == name:
+            if opt.alias == name:
                 return key
         raise CapArgKeyNotFound(name)
 
     def _set_alias(
-        self, key: str, alias: Optional[str]
+        self, key: str, alias: Optional[AliasCandidates]
     ) -> Union[NoReturn, None]:
         opt = self._args.get(key)
         if opt is None:
@@ -440,9 +439,11 @@ class Cap(Generic[K, T, U]):
                     self._get_key(alias)
                     raise CapInvalidAlias(key, alias)
                 except CapArgKeyNotFound:
-                    self._args[key] = {**opt, **{"alias": alias}}  # type: ignore
+                    # self._args[key] = {**opt, **{"alias": alias}}  # type: ignore
+                    opt.alias = alias
             else:
-                self._args[key] = {**opt, **{"alias": None}}  # type: ignore
+                # self._args[key] = {**opt, **{"alias": None}}  # type: ignore
+                opt.alias = None
 
     def _panic(self, msg: str, alt_title: str, err: CAP_ERR) -> NoReturn:
         if self._raw_err:
@@ -457,9 +458,9 @@ class Cap(Generic[K, T, U]):
         named_doc = get_docs_from_annotations(annos)
         named_cmt_params = get_all_comments_parameters(annos)
         for name, doc in named_doc.items():
-            self._args[name]["doc"] = doc
+            self._args[name].doc = doc
         for name, cmt_params in named_cmt_params.items():
-            self._args[name]["cmt_params"] = cmt_params
+            self._args[name].cmt_params = cmt_params
 
     def _parse_argstype(self):
         typed: Dict[str, Type]
@@ -488,6 +489,7 @@ class Cap(Generic[K, T, U]):
         if extra is not None:
             _ext: Dict[K, AnnoExtra] = extra  # type: ignore
             self.helper(
+                # {k: BasicArgOption(v.about, v.alias) for k, v in _ext.items()}
                 {
                     k: {"about": v.about, "alias": v.alias}
                     for k, v in _ext.items()
@@ -513,20 +515,20 @@ class Cap(Generic[K, T, U]):
         if self._args.get(key) is not None and prevent_overwrite:
             # TODO: sending any message?
             return self
-        self._args[key] = {
-            "val": default,
-            "type": arg_type,
-            "about": about,
-            "alias": None,
-            "cb": callback,
-            "cb_idx": callback_priority,
-            "hide": hide,
-            "doc": doc,
-            "cmt_params": {},
-            "show_default": show_default,
-            "cls_attr_val": cls_attr_val,
-            "local_delimiter": Option.NONE(),
-        }
+        self._args[key] = ArgOption(
+            val=default,
+            type=arg_type,
+            about=about,
+            alias=None,
+            cb=callback,
+            cb_idx=callback_priority,
+            hide=hide,
+            doc=doc,
+            cmt_params={},
+            show_default=show_default,
+            cls_attr_val=cls_attr_val,
+            local_delimiter=Option.NONE(),
+        )
         if alias is not None:
             try:
                 self._set_alias(key, alias)
@@ -548,8 +550,8 @@ class Cap(Generic[K, T, U]):
         self, key: str, callback: ArgCallback, priority: int = 1
     ) -> Cap:
         if self._args.get(key) is not None:
-            self._args[key]["cb"] = callback
-            self._args[key]["cb_idx"] = priority
+            self._args[key].cb = callback
+            self._args[key].cb_idx = priority
         else:
             raise KeyError(
                 f"'{key}' haven't been defined as an argument in Cap"
@@ -588,10 +590,10 @@ class Cap(Generic[K, T, U]):
         else:
             for arg, val in value.items():  # type: ignore
                 try:
-                    t = self._args[arg]["type"]
+                    t = self._args[arg].type
                     valid, _, _ = VALIDATOR.extract(t, val, cvt=False).unwrap()
                     if valid:
-                        self._args[arg]["val"] = Option.Some(val)
+                        self._args[arg].val = Option.Some(val)
                     else:
                         # raise CapInvalidDefaultValue(arg, t, val)
                         self._panic(
@@ -613,20 +615,24 @@ class Cap(Generic[K, T, U]):
                     )
         return self
 
-    def helper(self, helpers: Dict[K, BasicArgOption]) -> Cap:
+    # def helper(self, helpers: Dict[K, BasicArgOption]) -> Cap:
+    def helper(self, helpers: Dict[K, HelperOptions]) -> Cap:
         if self._preset_helper_used:
             print(
                 "[warn] detected call of `Cap.helper` after call of preset helpers"
             )
         for arg, opt in helpers.items():  # type: ignore
             try:
+                # opt = opt.__dict__
                 try:
-                    opt: Dict[str, str]
+                    # opt: Dict[str, str]
                     alias = opt.pop("alias")
                     self._set_alias(arg, alias)
                 except KeyError:
                     ...
-                self._args[arg] = {**self._args[arg], **opt}  # type: ignore[misc]
+                # self._args[arg] = {**self._args[arg], **opt}  # type: ignore[misc]
+                for k, v in opt.items():
+                    setattr(self._args[arg], k, v)
 
             except KeyError as err:
                 name = str(err)
@@ -676,8 +682,8 @@ class Cap(Generic[K, T, U]):
         for key, opt in self._args.items():
             named_args.append(
                 (
-                    "flag" if _is_flag(opt["type"]) else "option",
-                    (key, opt["alias"]),
+                    "flag" if _is_flag(opt.type) else "option",
+                    (key, opt.alias),
                 )
             )
 
@@ -720,11 +726,11 @@ class Cap(Generic[K, T, U]):
             )
             opt = self._args[key]  # TODO:
             parsed["queue_type"] = get_queue_type(
-                opt["type"], allow_optional=True
+                opt.type, allow_optional=True
             )
             for v in val:
-                t = opt["type"]
-                temp_delimiter = opt["local_delimiter"]
+                t = opt.type
+                temp_delimiter = opt.local_delimiter
                 valid, v_got, err = validator.extract(
                     t,
                     v,
@@ -747,8 +753,8 @@ class Cap(Generic[K, T, U]):
         # callbacks
         cb_list: List[Tuple[str, int]] = []
         for key, opt in self._args.items():
-            if opt["cb"] is not None:
-                cb_list.append((key, opt["cb_idx"]))
+            if opt.cb is not None:
+                cb_list.append((key, opt.cb_idx))
         cb_list = sorted(cb_list, key=lambda x: x[1])
         cb_list.reverse()
         for key, _ in cb_list:
@@ -760,7 +766,7 @@ class Cap(Generic[K, T, U]):
                 if len(parsed["val"]) >= 0:
                     try:
                         arg = self._args[key]
-                        cb = arg["cb"]
+                        cb = arg.cb
                         if cb is not None:
                             parsed_map[key]["val"] = cb(self, parsed["val"])
                     except KeyError:
@@ -773,18 +779,16 @@ class Cap(Generic[K, T, U]):
             args_obj = self._argstype.__new__(self._argstype)
             # args_obj = self._argstype()
         for key, opt in self._args.items():
-            if opt["hide"]:
+            if opt.hide:
                 if parsed_map.get(key) is not None:
                     parsed_map.pop(key)
             else:
                 if parsed_map.get(key) is None:
                     parsed_map[key] = {
                         "val": [],
-                        "default_val": opt[
-                            "val"
-                        ],  # TODO: checking typeof default value
+                        "default_val": opt.val,  # TODO: checking typeof default value
                         "queue_type": get_queue_type(
-                            opt["type"], allow_optional=True
+                            opt.type, allow_optional=True
                         ),
                     }
                     if (
@@ -799,11 +803,11 @@ class Cap(Generic[K, T, U]):
                         except AttributeError:
                             ...
                     if parsed_map[key]["default_val"].is_none():
-                        if get_optional_candidates(opt["type"]) is None:
+                        if get_optional_candidates(opt.type) is None:
                             self._panic(
-                                f"option {colorize_text_t_option_name(key)}:{colorize_text_t_type(opt['type'])} is required but it is missing",
+                                f"option {colorize_text_t_option_name(key)}:{colorize_text_t_type(opt.type)} is required but it is missing",
                                 "Cap.parse",
-                                ArgsParserMissingArgument(key, opt["type"]),
+                                ArgsParserMissingArgument(key, opt.type),
                             )
                         else:
                             parsed_map[key]["default_val"] = Option.Some(None)

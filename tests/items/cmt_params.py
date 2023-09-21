@@ -31,7 +31,7 @@ def test_cmt_param_hide_default():
         max_depth: int
 
     cap = Cap(T)
-    assert cap._args["max_depth"]["show_default"] == False
+    assert cap._args["max_depth"].show_default == False
 
 
 def test_cmt_param_delimiter():

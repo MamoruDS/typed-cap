@@ -82,4 +82,4 @@ def test_anno_doc_as_about():
         """
 
     cap = Cap(T)
-    assert cap._args["anno"]["about"] == "anno doc for testing"
+    assert cap._args["anno"].about == "anno doc for testing"
