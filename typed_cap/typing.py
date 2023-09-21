@@ -1,4 +1,5 @@
 import json
+import sys
 from enum import EnumMeta
 from typed_cap.types import BasicArgOption, VALID_ALIAS_CANDIDATES
 from typed_cap.utils import is_T_based, simple_eq, str_eq, RO
@@ -446,6 +447,30 @@ VALIDATOR = ValidVal(
         },
     }
 )
+
+
+if sys.version_info.minor >= 10:
+    from types import UnionType
+
+    def _valid_uniontype(vv: ValidVal, t: UnionType, val: Any, cvt: bool):
+        v = ValidRes[UnionType]()
+        opts = get_args(t)
+        for opt in opts:
+            v_got = vv.extract(opt, val, cvt)
+            if v_got.is_valid():
+                return v_got
+        return v
+
+    VALIDATOR.validators.update(
+        {
+            "uniontype": {
+                "t": None,
+                "tt": None,
+                "c": UnionType,
+                "v": _valid_uniontype,
+            }
+        }
+    )
 
 
 def get_optional_candidates(t: Type) -> Optional[Tuple]:
