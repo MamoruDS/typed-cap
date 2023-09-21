@@ -2,52 +2,6 @@ from __future__ import annotations
 import inspect
 import json
 import sys
-from typed_cap.types import (
-    ArgNamed,
-    ArgOption,
-    ArgTypes,
-    ArgsParserKeyError,
-    ArgsParserMissingArgument,
-    ArgsParserMissingValue,
-    ArgsParserOptions,
-    ArgsParserUndefinedParser,
-    ArgsParserUnexpectedValue,
-    BasicArgOption,
-    CapArgKeyNotFound,
-    CapInvalidAlias,
-    CapInvalidDefaultValue,
-    CapInvalidValue,
-    CapUnknownArg,
-    Unhandled,
-    VALID_ALIAS_CANDIDATES,
-)
-from typed_cap.args_parser import args_parser
-from typed_cap.cmt_param import parse_anno_cmt_params
-from typed_cap.typing import (
-    VALIDATOR,
-    AnnoExtra,
-    ValidVal,
-    get_optional_candidates,
-    get_queue_type,
-    get_type_candidates,
-    argstyping_parse,
-    argstyping_parse_extra,
-)
-from typed_cap.utils import (
-    RO,
-    flatten,
-    get_terminal_width,
-    is_T_based,
-    panic,
-    split_by_length,
-    unwrap_or,
-)
-from typed_cap.utils.code import (
-    get_all_comments_parameters,
-    get_annotations,
-    get_docs_from_annotations,
-)
-from typed_cap.utils.color import Colors, fg
 from typing import (
     Any,
     Callable,
@@ -66,6 +20,52 @@ from typing import (
     get_args,
 )
 
+from .args_parser import args_parser
+from .cmt_param import parse_anno_cmt_params
+from .types import (
+    ArgNamed,
+    ArgOption,
+    ArgTypes,
+    ArgsParserKeyError,
+    ArgsParserMissingArgument,
+    ArgsParserMissingValue,
+    ArgsParserOptions,
+    ArgsParserUndefinedParser,
+    ArgsParserUnexpectedValue,
+    BasicArgOption,
+    CapArgKeyNotFound,
+    CapInvalidAlias,
+    CapInvalidDefaultValue,
+    CapInvalidValue,
+    CapUnknownArg,
+    Unhandled,
+    VALID_ALIAS_CANDIDATES,
+)
+from .typing import (
+    VALIDATOR,
+    AnnoExtra,
+    ValidVal,
+    get_optional_candidates,
+    get_queue_type,
+    get_type_candidates,
+    argstyping_parse,
+    argstyping_parse_extra,
+)
+from .utils import (
+    RO,
+    flatten,
+    get_terminal_width,
+    is_T_based,
+    panic,
+    split_by_length,
+    unwrap_or,
+)
+from .utils.code import (
+    get_all_comments_parameters,
+    get_annotations,
+    get_docs_from_annotations,
+)
+from .utils.color import Colors, fg
 
 ArgCallback = Callable[["Cap", List[List]], Union[NoReturn, List[List]]]
 

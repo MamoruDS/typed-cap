@@ -14,7 +14,7 @@ from typing import (
     Union,
 )
 
-from typed_cap.utils import RO
+from .utils import RO
 
 
 VALID_ALIAS_CANDIDATES = Literal[

@@ -1,8 +1,6 @@
 import json
 import sys
 from enum import EnumMeta
-from typed_cap.types import BasicArgOption, VALID_ALIAS_CANDIDATES
-from typed_cap.utils import is_T_based, simple_eq, str_eq, RO
 from types import GenericAlias
 from typing import (
     Annotated,
@@ -31,6 +29,9 @@ from typing import (
     _TypedDictMeta,  # type: ignore
     _UnionGenericAlias,  # type: ignore
 )
+
+from .types import BasicArgOption, VALID_ALIAS_CANDIDATES
+from .utils import RO, is_T_based, simple_eq, str_eq
 
 
 CLS_Literal = _LiteralGenericAlias

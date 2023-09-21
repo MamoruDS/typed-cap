@@ -1,13 +1,13 @@
-from typed_cap.types import (
+from typing import Dict, NoReturn, Optional, TypedDict, Union, get_args
+
+from .types import (
     ArgOption,
     VALID_ALIAS_CANDIDATES,
     CmtParamInvalidFlagValue,
     CmtParamInvalidValue,
     CmtParamMissingValue,
 )
-from typed_cap.utils import RO
-from typing import Dict, NoReturn, Optional, TypedDict, Union, get_args
-
+from .utils import RO
 
 _CmtParamVal = Optional[str]
 
