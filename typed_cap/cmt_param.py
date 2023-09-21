@@ -161,7 +161,3 @@ def parse_anno_cmt_params(
 
         named_param[name] = params
     return named_param
-
-
-# def apply_validparams(cap: Cap, named_params: NamedValidParams) -> None:
-#     ...

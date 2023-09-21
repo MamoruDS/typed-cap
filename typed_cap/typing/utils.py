@@ -17,7 +17,6 @@ from ..types import BasicArgOption, VALID_ALIAS_CANDIDATES
 from ..utils import is_T_based
 from .types import NoneType, TypedDictTType, UnionTType
 
-# from .types import VALID_ALIAS_CANDIDATES
 
 T = TypeVar("T")
 

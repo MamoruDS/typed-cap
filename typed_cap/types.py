@@ -262,14 +262,6 @@ class CmtParamInvalidFlagValue(CmtParamInvalidValue):
         super().__init__(name, param, value, *args)
 
 
-class Unbound:
-    ...
-
-
-class UnboundException(Exception):
-    ...
-
-
 class Unhandled(Exception):
     msg: str
     desc: Optional[str]

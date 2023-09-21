@@ -17,7 +17,6 @@ from typing import (
     TypeVar,
     TypedDict,
     Union,
-    get_args,
 )
 
 from .args_parser import args_parser
@@ -39,7 +38,6 @@ from .types import (
     CapInvalidValue,
     CapUnknownArg,
     Unhandled,
-    Unbound,
     VALID_ALIAS_CANDIDATES,
 )
 from .typing import (
@@ -66,12 +64,11 @@ from .utils.code import (
     get_docs_from_annotations,
 )
 from .utils.color import Colors, fg
-from .utils.option import Option
+from .utils.option import Option, Unbound
 
 ArgCallback = Callable[["Cap", List[List]], Union[NoReturn, List[List]]]
 
 
-# _ArgOpt = ArgOption[ArgCallback]
 _ArgOpt = ArgOption
 
 

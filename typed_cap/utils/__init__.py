@@ -4,7 +4,6 @@ import shutil
 from sys import stderr
 from typing import (
     Any,
-    Generic,
     List,
     NoReturn,
     Optional,
@@ -16,31 +15,6 @@ from typing import (
 
 
 T = TypeVar("T")
-
-
-class RO(Generic[T]):
-    """RealOptional"""
-
-    value: Optional[T]
-    _none: bool
-
-    def __init__(self, is_none: bool, value: Optional[T] = None) -> None:
-        self._none = is_none
-        self.value = value
-
-    def is_some(self) -> bool:
-        return not self._none
-
-    def is_none(self) -> bool:
-        return self._none
-
-    @classmethod
-    def NONE(cls):
-        return cls(is_none=True)
-
-    @classmethod
-    def Some(cls, value: Optional[T]):
-        return cls(is_none=False, value=value)
 
 
 def flatten(a: List[List]) -> List:
@@ -58,6 +32,8 @@ def get_terminal_width(max_width: int) -> int:
 
 # FIXME: potential issues
 def is_T_based(x) -> Union[Type[dict], Type[object], None]:
+    from typing import _TypedDictMeta  # type: ignore
+
     if not inspect.isclass(x):
         return None
     if type(x) is _TypedDictMeta:

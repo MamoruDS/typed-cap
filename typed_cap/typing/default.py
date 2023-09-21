@@ -8,7 +8,6 @@ from typing import (
     Union,
     get_args,
     get_origin,
-    get_type_hints,
 )
 
 from ..utils import str_eq
