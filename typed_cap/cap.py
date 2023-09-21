@@ -42,7 +42,9 @@ from .types import (
     VALID_ALIAS_CANDIDATES,
 )
 from .typing import (
+    BasedType,
     ValidVal,
+    get_based,
     get_optional_candidates,
     get_queue_type,
     get_type_candidates,
@@ -52,7 +54,6 @@ from .typing.default import VALIDATOR
 from .utils import (
     flatten,
     get_terminal_width,
-    is_T_based,
     panic,
     split_by_length,
     none_or,
@@ -125,11 +126,11 @@ class Parsed(Generic[T]):
     def value(self) -> T:
         val: T
         gvc: _GVCS
-        t_based = is_T_based(self._argstype)
-        if t_based is dict:
+        t_based = get_based(self._argstype)
+        if t_based is BasedType.DICT:
             val = {}  # type: ignore
             gvc = _GVCS(dict, val)
-        elif t_based is object:
+        elif t_based is BasedType.OBJECT:
             if self._args_obj is None:
                 raise Unhandled("args_obj is None", "Parsed.value")
             val = self._args_obj
@@ -575,7 +576,7 @@ class Cap(Generic[K, T, U]):
         return self.default_strict(value)  # type: ignore[arg-type]
 
     def default_strict(self, value: T) -> Cap:
-        if is_T_based(self._argstype) is object:
+        if get_based(self._argstype) is BasedType.OBJECT:
             # TODO: TBD: should default be available for object-based?
             print(
                 "[warn] `default` has been ignore since cap using an object-based argstype"
@@ -763,9 +764,10 @@ class Cap(Generic[K, T, U]):
 
         # assign default value to empty field
         args_obj: Optional[T] = None
-        T_based = is_T_based(self._argstype)
-        if T_based is object:
-            args_obj = self._argstype()  # type: ignore
+        t_based = get_based(self._argstype)
+        if t_based is BasedType.OBJECT:
+            # args_obj = self._argstype.__new__(self._argstype)
+            args_obj = self._argstype()
         for key, opt in self._args.items():
             if opt["hide"]:
                 if parsed_map.get(key) is not None:
@@ -783,7 +785,7 @@ class Cap(Generic[K, T, U]):
                     }
                     if (
                         parsed_map[key]["default_val"].is_none()
-                        and T_based is object
+                        and t_based is BasedType.OBJECT
                         and args_obj is not None
                     ):
                         try:

@@ -1,4 +1,3 @@
-import inspect
 import re
 import shutil
 from sys import stderr
@@ -7,10 +6,7 @@ from typing import (
     List,
     NoReturn,
     Optional,
-    Type,
     TypeVar,
-    Union,
-    _TypedDictMeta,  # type: ignore
 )
 
 
@@ -28,27 +24,6 @@ def get_terminal_width(max_width: int) -> int:
     s = shutil.get_terminal_size((999, 999))
     w = s.columns
     return min(w, max_width)
-
-
-# FIXME: potential issues
-def is_T_based(x) -> Union[Type[dict], Type[object], None]:
-    from typing import _TypedDictMeta  # type: ignore
-
-    if not inspect.isclass(x):
-        return None
-    if type(x) is _TypedDictMeta:
-        return dict
-    b = x.__base__
-    while True:
-        if b is dict:
-            return dict
-        elif b is object:
-            return object
-        elif b is None:
-            break
-        else:
-            b = b.__base__
-    return None
 
 
 def join(a: List[str], j: str) -> str:

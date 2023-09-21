@@ -1,3 +1,5 @@
+import inspect
+from enum import Enum, auto
 from typing import (
     Dict,
     Iterable,
@@ -12,13 +14,38 @@ from typing import (
     get_type_hints,
 )
 
-from ..utils import is_T_based
 from .types import NoneType, TypedDictTType, UnionTType
 
 
 T = TypeVar("T")
 
 NoneType = type(None)
+
+
+class BasedType(Enum):
+    NONE = 0
+    DICT = auto()
+    OBJECT = auto()
+    UNKNOWN = auto()
+
+
+# FIXME: potential issues
+def get_based(x) -> BasedType:
+    if not inspect.isclass(x):
+        return BasedType.NONE
+    if type(x) is TypedDictTType:
+        return BasedType.DICT
+    b = x.__base__
+    while True:
+        if b is dict:
+            return BasedType.DICT
+        elif b is object:
+            return BasedType.OBJECT
+        elif b is None:
+            break
+        else:
+            b = b.__base__
+    return BasedType.UNKNOWN
 
 
 def get_type_candidates(t: Type[T]) -> Tuple[Type[T]]:
@@ -67,9 +94,10 @@ def get_queue_type(
 
 
 def argstyping_parse(t: Type[T]) -> Dict[str, Type[T]]:
-    if is_T_based(t) not in [dict, object]:
+    based = get_based(t)
+    if based is not BasedType.DICT and based is not BasedType.OBJECT:
         raise Exception(
-            "t should a `typing.TypedDict` or a `class` for parsing"
+            "t should be either `typing.TypedDict` or `object` for parsing"
         )  # TODO:
     key_dict: Dict[str, Type] = get_type_hints(t)
     typed: Dict[str, Type] = dict(((k, NoneType) for k in key_dict.keys()))
