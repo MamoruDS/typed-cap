@@ -262,3 +262,15 @@ def test_arguments_B():
         )
     except ArgsParserKeyError as err:
         assert err.key == "human-readable"
+
+
+@pytest.mark.skipif(
+    sys.version_info.minor < 10, reason="requires Python 3.10 or higher"
+)
+def test_uniontypes():
+    class T(B):
+        numbers: list[int] | None
+
+    cap = Cap(T)
+    res = cap.parse(cmd("--numbers 5,6,10"))
+    assert G(res.args, "numbers") == [5, 6, 10]
