@@ -11,7 +11,7 @@ from typing import (
     get_type_hints,
 )
 
-from ..utils import simple_eq, str_eq
+from ..utils import str_eq
 from .valid import ValidVal, ValidRes
 from .types import LiteralTType, NoneType, QueueTType, UnionTType
 
@@ -169,7 +169,7 @@ def _valid_enum(vv: ValidVal, t: EnumMeta, val: Any, _cvt: bool):
         for m in ms:
             if on_val:
                 v_got = vv.extract(type(m.value), val, cvt=True)
-                if simple_eq(v_got.value, m.value):
+                if v_got.value == m.value:
                     v.some(m)
                     v.valid()
             else:

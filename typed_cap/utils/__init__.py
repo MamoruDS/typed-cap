@@ -16,7 +16,6 @@ from typing import (
 
 
 T = TypeVar("T")
-S = TypeVar("S", bound=Union[str, int, float, bool])
 
 
 class RO(Generic[T]):
@@ -155,22 +154,9 @@ def str_eq(
 ) -> bool:
     if lhs is None or rhs is None:
         return False
-    elif case_sensitive:
-        return lhs == rhs
-    else:
-        return lhs.lower() == rhs.lower()
+
+    return lhs == rhs if case_sensitive else lhs.lower() == rhs.lower()
 
 
-def simple_eq(lhs: Optional[S], rhs: Optional[S]) -> bool:
-    # prevent typing issue
-    return lhs == rhs
-
-
-D = TypeVar("D")
-
-
-def unwrap_or(d: Optional[D], alt: D) -> D:
-    if d is None:
-        return alt
-    else:
-        return d
+def none_or(val: Optional[T], alt: T) -> T:
+    return alt if val is None else val

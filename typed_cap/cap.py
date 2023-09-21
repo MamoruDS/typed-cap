@@ -59,7 +59,7 @@ from .utils import (
     is_T_based,
     panic,
     split_by_length,
-    unwrap_or,
+    none_or,
 )
 from .utils.code import (
     get_all_comments_parameters,
@@ -202,7 +202,7 @@ def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
         arg_lns: List[Tuple[str, str]] = []
         max_opt_len = 0
         for key, opt in c._args.items():
-            alias = unwrap_or(opt["alias"], "   ")
+            alias = none_or(opt["alias"], "   ")
             if len(alias) == 1:
                 alias = f"-{alias},"
             ln = f"{alias}--{key}"
@@ -254,7 +254,7 @@ def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
 
 def _helper_version_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
     if v[0][0]:
-        ver = unwrap_or(c._version, "unknown version")
+        ver = none_or(c._version, "unknown version")
         if c._name is not None:
             print(f"{c._name} {ver}")
         else:
@@ -391,7 +391,7 @@ class Cap(Generic[K, T, U]):
 
         if use_anno_doc_as_about:
             for name, opt in self._args.items():
-                self._args[name]["about"] = unwrap_or(opt["about"], opt["doc"])
+                self._args[name]["about"] = none_or(opt["about"], opt["doc"])
 
         if use_anno_cmt_params:
             named_params = parse_anno_cmt_params(self._args)
@@ -445,7 +445,7 @@ class Cap(Generic[K, T, U]):
         if self._raw_err:
             raise err
         else:
-            title = unwrap_or(self._name, alt_title)
+            title = none_or(self._name, alt_title)
             err_msg = f"{title}: {msg}\n\t{err.__class__.__name__}"
             panic(err_msg)
 

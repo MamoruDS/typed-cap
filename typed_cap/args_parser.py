@@ -17,7 +17,7 @@ from .types import (
     ArgsParserUnexpectedValue,
     ArgsParserResults,
 )
-from .utils import unwrap_or
+from .utils import none_or
 
 
 def args_parser(
@@ -33,7 +33,7 @@ def args_parser(
     )
 
     _default_options: ArgsParserOptions = {}
-    options: ArgsParserOptions = unwrap_or(parse_options, _default_options)
+    options: ArgsParserOptions = none_or(parse_options, _default_options)
     named_flags: List[ArgNamed] = []
     named_options: List[ArgNamed] = []
     for at, an in named_args:
