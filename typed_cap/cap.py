@@ -349,7 +349,7 @@ class Cap(Generic[K, T, U]):
     _argstype: Type[T]
     _args: Dict[str, _ArgOpt]
     _about: Optional[str]
-    _delimiter: Option[str]
+    _delimiter: Option[Optional[str]]
     _name: Optional[str]
     _version: Optional[str]
     _raw_err: bool
@@ -375,7 +375,7 @@ class Cap(Generic[K, T, U]):
         self._argstype = argstype
         self._args = {}
         self._about = None
-        self._delimiter: Option[str] = Option.Some(",")
+        self._delimiter = Option[Optional[str]].Some(",")
         self._name = None
         self._version = None
         self._raw_err = False
@@ -535,7 +535,7 @@ class Cap(Generic[K, T, U]):
             raise ValueError(
                 "Invalid delimiter; length of delimiter:<str> larger than 0"
             )
-        self._delimiter = Option.Some(delimiter)
+        self._delimiter = Option[Optional[str]].Some(delimiter)
         return self
 
     def set_callback(

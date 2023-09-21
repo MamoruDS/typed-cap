@@ -110,7 +110,7 @@ class ArgOption(BasicArgOption):
     cmt_params: Dict[str, Optional[str]]
     show_default: bool
     cls_attr_val: Optional[Any]
-    local_delimiter: Option[str]
+    local_delimiter: Option[Optional[str]]
 
 
 ArgTypes = Literal["flag", "option"]

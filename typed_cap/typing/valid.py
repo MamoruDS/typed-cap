@@ -79,15 +79,15 @@ class TypeInf(TypedDict):
 class ValidVal:
     attributes: Dict[str, Any]
     _validators: Dict[str, TypeInf]
-    _delimiter: Option[str]
+    _delimiter: Option[Optional[str]]
 
     # temp only
-    _temp_delimiter: Option[str]
+    _temp_delimiter: Option[Optional[str]]
 
     def __init__(self, validators: Dict[str, TypeInf]) -> None:
         self.attributes = {}
         self._validators = validators
-        self._delimiter = Option.Some(",")
+        self._delimiter = Option[Optional[str]].Some(",")
         self._temp_delimiter = Option.NONE()
 
     def _class_of(self, obj: Any) -> Optional[Any]:
@@ -103,14 +103,14 @@ class ValidVal:
         return self._validators
 
     @property
-    def delimiter(self) -> Option[str]:
+    def delimiter(self) -> Option[Optional[str]]:
         if self._temp_delimiter.is_some():
             return self._temp_delimiter
         else:
             return self._delimiter
 
     @delimiter.setter
-    def delimiter(self, delimiter: Option[str]) -> None:
+    def delimiter(self, delimiter: Option[Optional[str]]) -> None:
         self._delimiter = delimiter
 
     @overload
@@ -119,7 +119,7 @@ class ValidVal:
         t: str,
         val: Any,
         cvt: bool,
-        temp_delimiter: Option[str] = Option.NONE(),
+        temp_delimiter: Option[Optional[str]] = Option.NONE(),
         leave_scope: bool = False,
     ) -> ValidRes:
         ...
@@ -130,7 +130,7 @@ class ValidVal:
         t: Type[T],
         val: Any,
         cvt: bool,
-        temp_delimiter: Option[str] = Option.NONE(),
+        temp_delimiter: Option[Optional[str]] = Option.NONE(),
         leave_scope: bool = False,
     ) -> ValidRes[T]:
         ...
@@ -140,7 +140,7 @@ class ValidVal:
         t: Union[Type[T], str],
         val: Any,
         cvt: bool,
-        temp_delimiter: Option[str] = Option.NONE(),
+        temp_delimiter: Option[Optional[str]] = Option.NONE(),
         leave_scope: bool = False,
     ):
         # apply all temporal settings

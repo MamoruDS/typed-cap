@@ -80,10 +80,10 @@ def _parse_hide_default(
 
 def _parse_delimiter(
     name: str, val: _CmtParamVal
-) -> Union[Option[str], NoReturn]:
+) -> Union[Option[Optional[str]], NoReturn]:
     if val is None:
         raise CmtParamMissingValue(name, "delimiter")
-    return Option.Some(val)
+    return Option[Optional[str]].Some(val)
 
 
 def _parse_none_delimiter(
