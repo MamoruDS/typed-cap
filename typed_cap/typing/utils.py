@@ -1,4 +1,5 @@
 import inspect
+import sys
 from enum import Enum, auto
 from typing import (
     Dict,
@@ -57,7 +58,14 @@ def get_type_candidates(t: Type[T]) -> Tuple[Type[T]]:
     >>> get_type_candidates(Optional[int])
     (<class 'int'>, <class 'NoneType'>)
     """
-    if t.__class__ == UnionTType:
+    uniontypes = [UnionTType]
+
+    if sys.version_info >= (3, 10):
+        from types import UnionType
+
+        uniontypes.append(UnionType)
+
+    if t.__class__ in uniontypes:
         can = get_args(t)
         return can  # type: ignore
     else:
