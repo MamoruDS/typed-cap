@@ -1,14 +1,4 @@
 import re
-from typed_cap.types import (
-    ArgNamed,
-    ArgTypes,
-    ArgsParserKeyError,
-    ArgsParserMissingValue,
-    ArgsParserOptions,
-    ArgsParserUnexpectedValue,
-    ArgsParserResults,
-)
-from typed_cap.utils import unwrap_or
 from typing import (
     Dict,
     List,
@@ -17,6 +7,17 @@ from typing import (
     Tuple,
     Union,
 )
+
+from .types import (
+    ArgNamed,
+    ArgTypes,
+    ArgsParserKeyError,
+    ArgsParserMissingValue,
+    ArgsParserOptions,
+    ArgsParserUnexpectedValue,
+    ArgsParserResults,
+)
+from .utils import unwrap_or
 
 
 def args_parser(
