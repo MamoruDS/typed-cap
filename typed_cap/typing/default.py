@@ -137,7 +137,7 @@ def _valid_queue(vv: ValidVal, t: QueueTType, val: Any, cvt: bool):
             v.some(arr)
     elif cvt and isinstance(val, str) and vv.delimiter.is_some():
         # TODO: vv.delimiter is always "has some"
-        arr = val.split(vv.delimiter.value)
+        arr = val.split(vv.delimiter.unwrap())
         if loc_type == tuple:
             arr = tuple(arr)
         return vv.extract(t, arr, cvt)

@@ -53,7 +53,6 @@ from .typing import (
 )
 from .typing.default import VALIDATOR
 from .utils import (
-    RO,
     flatten,
     get_terminal_width,
     is_T_based,
@@ -67,6 +66,7 @@ from .utils.code import (
     get_docs_from_annotations,
 )
 from .utils.color import Colors, fg
+from .utils.option import Option
 
 ArgCallback = Callable[["Cap", List[List]], Union[NoReturn, List[List]]]
 
@@ -349,7 +349,7 @@ class Cap(Generic[K, T, U]):
     _argstype: Type[T]
     _args: Dict[str, _ArgOpt]
     _about: Optional[str]
-    _delimiter: RO[str]
+    _delimiter: Option[str]
     _name: Optional[str]
     _version: Optional[str]
     _raw_err: bool
@@ -375,7 +375,7 @@ class Cap(Generic[K, T, U]):
         self._argstype = argstype
         self._args = {}
         self._about = None
-        self._delimiter: RO[str] = RO.Some(",")
+        self._delimiter: Option[str] = Option.Some(",")
         self._name = None
         self._version = None
         self._raw_err = False
@@ -519,7 +519,7 @@ class Cap(Generic[K, T, U]):
             "cmt_params": {},
             "show_default": show_default,
             "cls_attr_val": cls_attr_val,
-            "local_delimiter": RO.NONE(),
+            "local_delimiter": Option.NONE(),
         }
         if alias is not None:
             try:
@@ -535,7 +535,7 @@ class Cap(Generic[K, T, U]):
             raise ValueError(
                 "Invalid delimiter; length of delimiter:<str> larger than 0"
             )
-        self._delimiter = RO.Some(delimiter)
+        self._delimiter = Option.Some(delimiter)
         return self
 
     def set_callback(

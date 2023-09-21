@@ -14,7 +14,7 @@ from typing import (
     Union,
 )
 
-from .utils import RO
+from .utils.option import Option
 
 
 VALID_ALIAS_CANDIDATES = Literal[
@@ -110,7 +110,7 @@ class ArgOption(BasicArgOption):
     cmt_params: Dict[str, Optional[str]]
     show_default: bool
     cls_attr_val: Optional[Any]
-    local_delimiter: RO[str]
+    local_delimiter: Option[str]
 
 
 ArgTypes = Literal["flag", "option"]
@@ -263,6 +263,10 @@ class CmtParamInvalidFlagValue(CmtParamInvalidValue):
 
 
 class Unbound:
+    ...
+
+
+class UnboundException(Exception):
     ...
 
 

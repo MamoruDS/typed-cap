@@ -7,7 +7,7 @@ from .types import (
     CmtParamInvalidValue,
     CmtParamMissingValue,
 )
-from .utils import RO
+from .utils.option import Option
 
 _CmtParamVal = Optional[str]
 
@@ -15,7 +15,7 @@ _CmtParamVal = Optional[str]
 class ValidParams(TypedDict, total=False):
     alias: VALID_ALIAS_CANDIDATES
     show_default: bool
-    delimiter: RO[str]
+    delimiter: Option[Optional[str]]
     enum_on_value: bool
 
 
@@ -78,15 +78,17 @@ def _parse_hide_default(
     )
 
 
-def _parse_delimiter(name: str, val: _CmtParamVal) -> Union[RO[str], NoReturn]:
+def _parse_delimiter(
+    name: str, val: _CmtParamVal
+) -> Union[Option[str], NoReturn]:
     if val is None:
         raise CmtParamMissingValue(name, "delimiter")
-    return RO.Some(val)
+    return Option.Some(val)
 
 
 def _parse_none_delimiter(
     name: str, val: _CmtParamVal
-) -> Union[RO[str], NoReturn]:
+) -> Union[Option[Optional[str]], NoReturn]:
     _parse_flag_generic(
         name,
         "none_delimiter",
@@ -94,7 +96,7 @@ def _parse_none_delimiter(
         flag_val=True,
         allow_val=False,
     )
-    return RO.Some(None)
+    return Option[Optional[str]].Some("None")
 
 
 def _parse_enum_on_value(

@@ -13,29 +13,29 @@ from typing import (
     Union,
     overload,
 )
-from ..utils import RO
+from ..utils.option import Option
 
 T = TypeVar("T")
 
 
 class ValidRes(Generic[T]):
     _valid: bool
-    _data: RO[T]
-    _error: RO[Exception]
+    _data: Option[T]
+    _error: Option[Exception]
 
     def __init__(self) -> None:
         self._valid = False
-        self._data = RO.NONE()
-        self._error = RO.NONE()
+        self._data = Option.NONE()
+        self._error = Option.NONE()
 
     def some(self, val: T):
-        self._data = RO.Some(val)
+        self._data = Option.Some(val)
 
     def none(self):
-        self._data = RO.NONE()
+        self._data = Option.NONE()
 
     def error(self, err: Exception):
-        self._error = RO.Some(err)
+        self._error = Option.Some(err)
 
     def valid(self):
         self._valid = True
@@ -44,22 +44,22 @@ class ValidRes(Generic[T]):
         return self._valid
 
     @property
-    def data(self) -> RO[T]:
+    def data(self) -> Option[T]:
         return self._data
 
     @property
-    def value(self) -> Optional[T]:
-        return self._data.value
+    def value(self) -> T:
+        return self._data.unwrap()
 
-    def unwrap(self) -> Tuple[bool, Optional[T], RO[Exception]]:
-        return self._valid, self._data.value, self._error
+    def unwrap(self) -> Tuple[bool, T, Option[Exception]]:
+        return self._valid, self.value, self._error
 
     def __str__(self) -> str:
         return json.dumps(
             {
                 "valid": self._valid,
-                "value": self._data.value,
-                "error": self._error.value,
+                "value": str(self._data),
+                "error": str(self._error),
             },
             indent=4,
         )
@@ -79,16 +79,16 @@ class TypeInf(TypedDict):
 class ValidVal:
     attributes: Dict[str, Any]
     _validators: Dict[str, TypeInf]
-    _delimiter: RO[str]
+    _delimiter: Option[str]
 
     # temp only
-    _temp_delimiter: RO[str]
+    _temp_delimiter: Option[str]
 
     def __init__(self, validators: Dict[str, TypeInf]) -> None:
         self.attributes = {}
         self._validators = validators
-        self._delimiter = RO.Some(",")
-        self._temp_delimiter = RO.NONE()
+        self._delimiter = Option.Some(",")
+        self._temp_delimiter = Option.NONE()
 
     def _class_of(self, obj: Any) -> Optional[Any]:
         try:
@@ -103,14 +103,14 @@ class ValidVal:
         return self._validators
 
     @property
-    def delimiter(self) -> RO[str]:
+    def delimiter(self) -> Option[str]:
         if self._temp_delimiter.is_some():
             return self._temp_delimiter
         else:
             return self._delimiter
 
     @delimiter.setter
-    def delimiter(self, delimiter: RO[str]) -> None:
+    def delimiter(self, delimiter: Option[str]) -> None:
         self._delimiter = delimiter
 
     @overload
@@ -119,7 +119,7 @@ class ValidVal:
         t: str,
         val: Any,
         cvt: bool,
-        temp_delimiter: RO[str] = RO.NONE(),
+        temp_delimiter: Option[str] = Option.NONE(),
         leave_scope: bool = False,
     ) -> ValidRes:
         ...
@@ -130,7 +130,7 @@ class ValidVal:
         t: Type[T],
         val: Any,
         cvt: bool,
-        temp_delimiter: RO[str] = RO.NONE(),
+        temp_delimiter: Option[str] = Option.NONE(),
         leave_scope: bool = False,
     ) -> ValidRes[T]:
         ...
@@ -140,7 +140,7 @@ class ValidVal:
         t: Union[Type[T], str],
         val: Any,
         cvt: bool,
-        temp_delimiter: RO[str] = RO.NONE(),
+        temp_delimiter: Option[str] = Option.NONE(),
         leave_scope: bool = False,
     ):
         # apply all temporal settings
@@ -165,7 +165,7 @@ class ValidVal:
 
         # remove all temporal settings
         if leave_scope:
-            self._temp_delimiter = RO.NONE()
+            self._temp_delimiter = Option.NONE()
 
         if res is None:
             # TODO:
