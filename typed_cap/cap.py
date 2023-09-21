@@ -225,14 +225,12 @@ def _helper_help_cb(c: "Cap", v: List[List[bool]]) -> NoReturn:
             if c._args[key].about is not None:
                 about.append(c._args[key].about)
 
-            default_val = None
-            if c._args[key].val is None:
-                if c._args[key].cls_attr_val is not None:
-                    default_val = str(c._args[key].cls_attr_val)
+            if c._args[key].val.is_none():
+                default_val = c._args[key].cls_attr_val
             else:
-                default_val = str(c._args[key].val)
+                default_val = c._args[key].val.unwrap()
             if default_val is not None and c._args[key].show_default:
-                about.append(f"(default: {default_val})")
+                about.append(f"(default: {str(default_val)})")
 
             about = split_by_length(
                 " ".join(about),
