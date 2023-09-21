@@ -100,14 +100,5 @@ def split_by_length(
             return lns
 
 
-def str_eq(
-    lhs: Optional[str], rhs: Optional[str], case_sensitive: bool
-) -> bool:
-    if lhs is None or rhs is None:
-        return False
-
-    return lhs == rhs if case_sensitive else lhs.lower() == rhs.lower()
-
-
 def none_or(val: Optional[T], alt: T) -> T:
     return alt if val is None else val
