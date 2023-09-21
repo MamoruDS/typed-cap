@@ -63,7 +63,7 @@ from .utils.code import (
     get_docs_from_annotations,
 )
 from .utils.color import Colors, fg
-from .utils.option import Option, Unbound
+from .utils.option import Option
 
 ArgCallback = Callable[["Cap", List[List]], Union[NoReturn, List[List]]]
 
@@ -73,7 +73,7 @@ _ArgOpt = ArgOption
 
 class _ParsedVal(TypedDict):
     val: List[List[Any]]
-    default_val: Optional[Any]
+    default_val: Option
     queue_type: Optional[Literal["list", "tuple"]]
 
 
@@ -141,7 +141,7 @@ class Parsed(Generic[T]):
             pv = parsed["val"]
             pv = flatten(pv)
             if len(pv) == 0:
-                gvc.setVal(key, parsed["default_val"])
+                gvc.setVal(key, parsed["default_val"].unwrap())
             elif parsed["queue_type"] == "list":
                 gvc.setVal(key, flatten(pv))
             elif parsed["queue_type"] == "tuple":
@@ -495,7 +495,7 @@ class Cap(Generic[K, T, U]):
         arg_type: Type,
         about: Optional[str] = None,
         alias: Optional[VALID_ALIAS_CANDIDATES] = None,
-        default: Optional[Any] = Unbound(),
+        default: Option = Option.NONE(),
         callback: Optional[ArgCallback] = None,
         callback_priority: int = 1,
         hide: bool = False,
@@ -586,7 +586,7 @@ class Cap(Generic[K, T, U]):
                     t = self._args[arg]["type"]
                     valid, _, _ = VALIDATOR.extract(t, val, cvt=False).unwrap()
                     if valid:
-                        self._args[arg]["val"] = val
+                        self._args[arg]["val"] = Option.Some(val)
                     else:
                         # raise CapInvalidDefaultValue(arg, t, val)
                         self._panic(
@@ -709,7 +709,7 @@ class Cap(Generic[K, T, U]):
                 key,
                 {
                     "val": [],
-                    "default_val": None,
+                    "default_val": Option.NONE(),
                     "queue_type": None,
                 },
             )
@@ -782,17 +782,17 @@ class Cap(Generic[K, T, U]):
                         ),
                     }
                     if (
-                        type(parsed_map[key]["default_val"]) is Unbound
+                        parsed_map[key]["default_val"].is_none()
                         and T_based is object
                         and args_obj is not None
                     ):
                         try:
-                            parsed_map[key][
-                                "default_val"
-                            ] = args_obj.__getattribute__(key)
+                            parsed_map[key]["default_val"] = Option.Some(
+                                args_obj.__getattribute__(key)
+                            )
                         except AttributeError:
                             ...
-                    if type(parsed_map[key]["default_val"]) is Unbound:
+                    if parsed_map[key]["default_val"].is_none():
                         if get_optional_candidates(opt["type"]) is None:
                             self._panic(
                                 f"option {colorize_text_t_option_name(key)}:{colorize_text_t_type(opt['type'])} is required but it is missing",
@@ -800,6 +800,6 @@ class Cap(Generic[K, T, U]):
                                 ArgsParserMissingArgument(key, opt["type"]),
                             )
                         else:
-                            parsed_map[key]["default_val"] = None
+                            parsed_map[key]["default_val"] = Option.Some(None)
 
         return Parsed(self._argstype, out["args"], parsed_map, args_obj)

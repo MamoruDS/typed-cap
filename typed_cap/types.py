@@ -3,13 +3,11 @@ from typing import (
     Any,
     Callable,
     Dict,
-    Generic,
     List,
     Literal,
     Optional,
     Tuple,
     Type,
-    TypeVar,
     TypedDict,
     Union,
 )
@@ -100,7 +98,7 @@ class BasicArgOption(TypedDict):
 
 
 class ArgOption(BasicArgOption):
-    val: Optional[Any]
+    val: Option
     type: Type
     cb: Optional[Callable]
     cb_idx: int
