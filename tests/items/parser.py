@@ -265,7 +265,7 @@ def test_arguments_B():
 
 
 @pytest.mark.skipif(
-    sys.version_info.minor < 10, reason="requires Python 3.10 or higher"
+    sys.version_info < (3, 10), reason="requires Python 3.10 or higher"
 )
 def test_uniontypes():
     class T(B):
@@ -286,7 +286,7 @@ def test_default_none_union():
 
 
 @pytest.mark.skipif(
-    sys.version_info.minor < 10, reason="requires Python 3.10 or higher"
+    sys.version_info < (3, 10), reason="requires Python 3.10 or higher"
 )
 def test_default_none_uniontype():
     class T(B):

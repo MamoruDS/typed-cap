@@ -241,7 +241,7 @@ VALIDATOR = ValidVal(
 )
 
 
-if sys.version_info.minor >= 10:
+if sys.version_info >= (3, 10):
     from types import UnionType
 
     def _valid_uniontype(vv: ValidVal, t: UnionType, val: Any, cvt: bool):
