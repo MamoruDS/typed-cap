@@ -39,6 +39,7 @@ from .types import (
     CapInvalidValue,
     CapUnknownArg,
     Unhandled,
+    Unbound,
     VALID_ALIAS_CANDIDATES,
 )
 from .typing import (
@@ -493,7 +494,7 @@ class Cap(Generic[K, T, U]):
         arg_type: Type,
         about: Optional[str] = None,
         alias: Optional[VALID_ALIAS_CANDIDATES] = None,
-        default: Optional[Any] = None,
+        default: Optional[Any] = Unbound(),
         callback: Optional[ArgCallback] = None,
         callback_priority: int = 1,
         hide: bool = False,
@@ -780,7 +781,7 @@ class Cap(Generic[K, T, U]):
                         ),
                     }
                     if (
-                        parsed_map[key]["default_val"] is None
+                        type(parsed_map[key]["default_val"]) is Unbound
                         and T_based is object
                         and args_obj is not None
                     ):
@@ -790,14 +791,14 @@ class Cap(Generic[K, T, U]):
                             ] = args_obj.__getattribute__(key)
                         except AttributeError:
                             ...
-                    if (
-                        parsed_map[key]["default_val"] is None
-                        and get_optional_candidates(opt["type"]) is None
-                    ):
-                        self._panic(
-                            f"option {colorize_text_t_option_name(key)}:{colorize_text_t_type(opt['type'])} is required but it is missing",
-                            "Cap.parse",
-                            ArgsParserMissingArgument(key, opt["type"]),
-                        )
+                    if type(parsed_map[key]["default_val"]) is Unbound:
+                        if get_optional_candidates(opt["type"]) is None:
+                            self._panic(
+                                f"option {colorize_text_t_option_name(key)}:{colorize_text_t_type(opt['type'])} is required but it is missing",
+                                "Cap.parse",
+                                ArgsParserMissingArgument(key, opt["type"]),
+                            )
+                        else:
+                            parsed_map[key]["default_val"] = None
 
         return Parsed(self._argstype, out["args"], parsed_map, args_obj)
