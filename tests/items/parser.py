@@ -1,6 +1,6 @@
 import sys
 from enum import Enum, IntEnum
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import pytest
 
@@ -274,3 +274,24 @@ def test_uniontypes():
     cap = Cap(T)
     res = cap.parse(cmd("--numbers 5,6,10"))
     assert G(res.args, "numbers") == [5, 6, 10]
+
+
+def test_default_none_union():
+    class T(B):
+        config: Union[str, None]
+
+    cap = Cap(T)
+    res = cap.parse(cmd(""))
+    assert G(res.args, "config") == None
+
+
+@pytest.mark.skipif(
+    sys.version_info.minor < 10, reason="requires Python 3.10 or higher"
+)
+def test_default_none_uniontype():
+    class T(B):
+        config: str | None
+
+    cap = Cap(T)
+    res = cap.parse(cmd(""))
+    assert G(res.args, "config") == None
