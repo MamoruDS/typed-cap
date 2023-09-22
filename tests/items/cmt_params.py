@@ -1,6 +1,9 @@
-from tests import CFG, cmd, get_profile
-from typed_cap import Cap
+from enum import Enum
 from typing import List, Optional
+
+from typed_cap import Cap
+
+from tests import CFG, cmd, get_profile
 
 
 TEST_PROFILE = get_profile(CFG.cur)
@@ -28,7 +31,7 @@ def test_cmt_param_hide_default():
         max_depth: int
 
     cap = Cap(T)
-    assert cap._args["max_depth"]["show_default"] == False
+    assert cap._args["max_depth"].show_default == False
 
 
 def test_cmt_param_delimiter():
@@ -38,7 +41,7 @@ def test_cmt_param_delimiter():
 
     cap = Cap(T)
     res = cap.parse(cmd("--videos agility1|ant3"))
-    assert G(res.val, "videos") == ["agility1", "ant3"]
+    assert G(res.args, "videos") == ["agility1", "ant3"]
 
 
 def test_cmt_param_none_delimiter():
@@ -48,4 +51,18 @@ def test_cmt_param_none_delimiter():
 
     cap = Cap(T)
     res = cap.parse(cmd("--message foo,bar"))
-    assert G(res.val, "message") == ["foo,bar"]
+    assert G(res.args, "message") == ["foo,bar"]
+
+
+def test_cmt_param_enum_on_val():
+    class CoinFlip(Enum):
+        head = 0
+        tail = 1
+
+    class T(B):
+        # @enum_on_value
+        flip: CoinFlip
+
+    cap = Cap(T)
+    res = cap.parse(cmd("--flip 1"))
+    assert G(res.args, "flip") == CoinFlip.tail

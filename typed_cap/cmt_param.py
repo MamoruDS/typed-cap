@@ -1,21 +1,22 @@
-from typed_cap.types import (
+from typing import Dict, NoReturn, Optional, TypedDict, Union, get_args
+
+from .types import (
+    AliasCandidates,
     ArgOption,
-    VALID_ALIAS_CANDIDATES,
     CmtParamInvalidFlagValue,
     CmtParamInvalidValue,
     CmtParamMissingValue,
 )
-from typed_cap.utils import RO
-from typing import Dict, NoReturn, Optional, TypedDict, Union, get_args
-
+from .utils.option import Option
 
 _CmtParamVal = Optional[str]
 
 
 class ValidParams(TypedDict, total=False):
-    alias: VALID_ALIAS_CANDIDATES
+    alias: AliasCandidates
     show_default: bool
-    delimiter: RO[str]
+    delimiter: Option[Optional[str]]
+    enum_on_value: bool
 
 
 NamedValidParams = Dict[str, ValidParams]
@@ -43,11 +44,11 @@ def _parse_flag_generic(
 
 def _parse_alias(
     name: str, val: _CmtParamVal
-) -> Union[VALID_ALIAS_CANDIDATES, NoReturn]:
+) -> Union[AliasCandidates, NoReturn]:
     if val is None:
         raise CmtParamMissingValue(name, "alias")
 
-    if val in get_args(VALID_ALIAS_CANDIDATES):
+    if val in get_args(AliasCandidates):
         return val  # type: ignore
     else:
         raise CmtParamInvalidValue(name, "alias", val)
@@ -77,15 +78,17 @@ def _parse_hide_default(
     )
 
 
-def _parse_delimiter(name: str, val: _CmtParamVal) -> Union[RO[str], NoReturn]:
+def _parse_delimiter(
+    name: str, val: _CmtParamVal
+) -> Union[Option[Optional[str]], NoReturn]:
     if val is None:
         raise CmtParamMissingValue(name, "delimiter")
-    return RO.Some(val)
+    return Option[Optional[str]].Some(val)
 
 
 def _parse_none_delimiter(
     name: str, val: _CmtParamVal
-) -> Union[RO[str], NoReturn]:
+) -> Union[Option[Optional[str]], NoReturn]:
     _parse_flag_generic(
         name,
         "none_delimiter",
@@ -93,7 +96,20 @@ def _parse_none_delimiter(
         flag_val=True,
         allow_val=False,
     )
-    return RO.Some(None)
+    return Option[Optional[str]].Some("None")
+
+
+def _parse_enum_on_value(
+    name: str, val: _CmtParamVal
+) -> Union[bool, NoReturn]:
+    _parse_flag_generic(
+        name,
+        "enum_on_value",
+        val,
+        flag_val=True,
+        allow_val=False,
+    )
+    return True
 
 
 def parse_anno_cmt_params(
@@ -102,7 +118,7 @@ def parse_anno_cmt_params(
     named_param: NamedValidParams = {}
     for name, opt in args.items():
         params: ValidParams = {}
-        for key, val in opt["cmt_params"].items():
+        for key, val in opt.cmt_params.items():
             if False:
                 ...
             # @alias
@@ -136,9 +152,12 @@ def parse_anno_cmt_params(
                     val,
                 )
 
+            # @enum_on_value
+            elif key == "enum_on_value":
+                params["enum_on_value"] = _parse_enum_on_value(
+                    name,
+                    val,
+                )
+
         named_param[name] = params
     return named_param
-
-
-# def apply_validparams(cap: Cap, named_params: NamedValidParams) -> None:
-#     ...

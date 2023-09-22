@@ -21,11 +21,11 @@ class _Cfg:
 
 
 class DB(TypedDict):
-    pass
+    ...
 
 
 class OB:
-    pass
+    ...
 
 
 T = TypeVar("T", bound=Union[TypedDict, object])

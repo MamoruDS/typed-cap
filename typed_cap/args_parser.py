@@ -1,14 +1,4 @@
 import re
-from typed_cap.types import (
-    ArgNamed,
-    ArgTypes,
-    ArgsParserKeyError,
-    ArgsParserMissingValue,
-    ArgsParserOptions,
-    ArgsParserUnexpectedValue,
-    ArgsParserResults,
-)
-from typed_cap.utils import unwrap_or
 from typing import (
     Dict,
     List,
@@ -17,6 +7,17 @@ from typing import (
     Tuple,
     Union,
 )
+
+from .types import (
+    ArgNamed,
+    ArgTypes,
+    ArgsParserKeyError,
+    ArgsParserMissingValue,
+    ArgsParserOptions,
+    ArgsParserUnexpectedValue,
+    ArgsParserResults,
+)
+from .utils import none_or
 
 
 def args_parser(
@@ -32,7 +33,7 @@ def args_parser(
     )
 
     _default_options: ArgsParserOptions = {}
-    options: ArgsParserOptions = unwrap_or(parse_options, _default_options)
+    options: ArgsParserOptions = none_or(parse_options, _default_options)
     named_flags: List[ArgNamed] = []
     named_options: List[ArgNamed] = []
     for at, an in named_args:
@@ -41,7 +42,7 @@ def args_parser(
         elif at == "option":
             named_options.append(an)
         else:
-            pass
+            ...
 
     def get_valid_key(k: str) -> Tuple[str, bool, bool]:
         key = k

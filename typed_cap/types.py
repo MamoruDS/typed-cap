@@ -1,23 +1,22 @@
-from enum import Enum
+from dataclasses import dataclass
 from typing import (
     Any,
     Callable,
     Dict,
-    Generic,
     List,
     Literal,
+    NamedTuple,
     Optional,
     Tuple,
     Type,
-    TypeVar,
     TypedDict,
     Union,
 )
 
-from typed_cap.utils import RO
+from .utils.option import Option
 
 
-VALID_ALIAS_CANDIDATES = Literal[
+AliasCandidates = Literal[
     "a",
     "b",
     "c",
@@ -83,24 +82,20 @@ VALID_ALIAS_CANDIDATES = Literal[
 ]
 
 
-class BasicArgOption(TypedDict):
+class HelperOptions(TypedDict, total=False):
+    alias: Optional[AliasCandidates]
     about: Optional[str]
-    alias: Optional[VALID_ALIAS_CANDIDATES]
 
 
-# C = TypeVar("C", bound=Callable)
-# class ArgOption(BasicArgOption, Generic[C]):
-#     val: Optional[Any]
-#     type: Type
-#     cb: Optional[C]
-#     cb_idx: int
-#     hide: bool
-#     doc: Optional[str]
-#     cmt_params: Dict[str, Optional[str]]
+@dataclass
+class BasicArgOption:
+    about: Optional[str]
+    alias: Optional[AliasCandidates]
 
 
+@dataclass
 class ArgOption(BasicArgOption):
-    val: Optional[Any]
+    val: Option
     type: Type
     cb: Optional[Callable]
     cb_idx: int
@@ -110,7 +105,8 @@ class ArgOption(BasicArgOption):
     cmt_params: Dict[str, Optional[str]]
     show_default: bool
     cls_attr_val: Optional[Any]
-    local_delimiter: RO[str]
+    """value defined in class attribute"""
+    local_delimiter: Option[Optional[str]]
 
 
 ArgTypes = Literal["flag", "option"]
@@ -194,12 +190,17 @@ class _CapInvalidValue(Exception):
         super().__init__(*args)
 
 
+@dataclass
+class CapInvalidType(Exception):
+    type: Any
+
+
 class CapInvalidValue(_CapInvalidValue):
-    pass
+    ...
 
 
 class CapInvalidDefaultValue(_CapInvalidValue):
-    pass
+    ...
 
 
 class CapInvalidAlias(Exception):
