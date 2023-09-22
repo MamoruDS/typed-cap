@@ -1,4 +1,4 @@
-from .valid import ValidVal
+from .valid import ValidatorNotFound, ValidVal
 from .utils import (
     BasedType,
     argstyping_parse,

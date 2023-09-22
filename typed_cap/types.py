@@ -105,6 +105,7 @@ class ArgOption(BasicArgOption):
     cmt_params: Dict[str, Optional[str]]
     show_default: bool
     cls_attr_val: Optional[Any]
+    """value defined in class attribute"""
     local_delimiter: Option[Optional[str]]
 
 
@@ -187,6 +188,11 @@ class _CapInvalidValue(Exception):
         self.type_class = type_class
         self.val = val
         super().__init__(*args)
+
+
+@dataclass
+class CapInvalidType(Exception):
+    type: Any
 
 
 class CapInvalidValue(_CapInvalidValue):

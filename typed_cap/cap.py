@@ -37,6 +37,7 @@ from .types import (
     CapArgKeyNotFound,
     CapInvalidAlias,
     CapInvalidDefaultValue,
+    CapInvalidType,
     CapInvalidValue,
     CapUnknownArg,
     HelperOptions,
@@ -44,6 +45,7 @@ from .types import (
 )
 from .typing import (
     BasedType,
+    ValidatorNotFound,
     ValidVal,
     get_based,
     get_optional_candidates,
@@ -187,6 +189,7 @@ CAP_ERR = Union[
     ArgsParserUndefinedParser,
     ArgsParserUnexpectedValue,
     CapInvalidDefaultValue,
+    CapInvalidType,
     CapInvalidValue,
     CapUnknownArg,
     Unhandled,
@@ -729,15 +732,22 @@ class Cap(Generic[K, T, U]):
             for v in val:
                 t = opt.type
                 temp_delimiter = opt.local_delimiter
-                valid, v_got, err = validator.extract(
-                    t,
-                    v,
-                    cvt=True,
-                    temp_delimiter=temp_delimiter,
-                    leave_scope=True,
-                ).unwrap()
 
-                # TODO: catch extract failed
+                try:
+                    valid, v_got, err = validator.extract(
+                        t,
+                        v,
+                        cvt=True,
+                        temp_delimiter=temp_delimiter,
+                        leave_scope=True,
+                    ).unwrap()
+                except ValidatorNotFound as err:
+                    self._panic(
+                        f"validator for type {colorize_text_t_type(err.type)} not found",
+                        "Cap.parse",
+                        CapInvalidType(err.type),
+                    )
+
                 if valid:
                     parsed["val"].append([v_got])
                 else:

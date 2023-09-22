@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import dataclass
 import json
 from typing import (
     Any,
@@ -16,6 +17,19 @@ from typing import (
 from ..utils.option import Option
 
 T = TypeVar("T")
+
+
+@dataclass
+class ValidatorNotFound(Exception):
+    type: Any
+
+    def __str__(self) -> str:
+        info = {
+            "type": self.type,
+            "type.__class__": self.type.__class__,
+            "type(t)": type(self.type),
+        }
+        return "debug" + json.dumps(info, indent=4, default=str)
 
 
 class ValidRes(Generic[T]):
@@ -142,7 +156,7 @@ class ValidVal:
         cvt: bool,
         temp_delimiter: Option[Optional[str]] = Option.NONE(),
         leave_scope: bool = False,
-    ):
+    ) -> ValidRes[T]:
         # apply all temporal settings
         if temp_delimiter.is_some():
             self._temp_delimiter = temp_delimiter
@@ -168,10 +182,6 @@ class ValidVal:
             self._temp_delimiter = Option.NONE()
 
         if res is None:
-            # TODO:
-            print(f"\t> t.__class__: {t.__class__}")
-            print(f"\t> type(t): {type(t)}")
-            print(f"\t> t: {t}")
-            raise Exception("not found")
+            raise ValidatorNotFound(t)
         else:
             return res
