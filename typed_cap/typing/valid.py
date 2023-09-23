@@ -98,15 +98,15 @@ class Unit(NamedTuple):
 
 class ValidVal:
     attributes: Dict[str, Any]
-    _validators: Dict[str, Unit]
+    _registry: Dict[str, Unit]
     _delimiter: Option[Optional[str]]
 
     # temp only
     _temp_delimiter: Option[Optional[str]]
 
-    def __init__(self, validators: Dict[str, Unit]) -> None:
+    def __init__(self, units: Dict[str, Unit]) -> None:
         self.attributes = {}
-        self._validators = validators
+        self._registry = units
         self._delimiter = Option[Optional[str]].Some(",")
         self._temp_delimiter = Option.NONE()
 
@@ -118,10 +118,6 @@ class ValidVal:
             return None
         except Exception as e:
             raise e
-
-    @property
-    def validators(self) -> Dict[str, Unit]:
-        return self._validators
 
     @property
     def delimiter(self) -> Option[Optional[str]]:
@@ -168,13 +164,14 @@ class ValidVal:
         if temp_delimiter.is_some():
             self._temp_delimiter = temp_delimiter
 
-        REG = self.validators
         res: Optional[ValidRes[T]] = None
         if isinstance(t, str):
-            if REG.get(t) is not None:
-                res = REG[t].valid_fn(self, REG[t].exact, val, cvt)
+            if self._registry.get(t) is not None:
+                res = self._registry[t].valid_fn(
+                    self, self._registry[t].exact, val, cvt
+                )
         else:
-            for _, t_inf in REG.items():
+            for _, t_inf in self._registry.items():
                 if (
                     t == t_inf.exact
                     or type(t) == t_inf.type_of
