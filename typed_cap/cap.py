@@ -2,6 +2,7 @@ from __future__ import annotations
 import inspect
 import json
 import sys
+from copy import deepcopy
 from typing import (
     Any,
     Callable,
@@ -46,6 +47,7 @@ from .types import (
 from .typing import (
     BasedType,
     ValidatorNotFound,
+    ValidUnit,
     ValidVal,
     get_based,
     get_optional_candidates,
@@ -53,7 +55,7 @@ from .typing import (
     get_type_candidates,
     argstyping_parse,
 )
-from .typing.default import VALIDATOR
+from .typing.default import PREDEFINED_UNITS
 from .utils import (
     flatten,
     get_terminal_width,
@@ -354,6 +356,7 @@ class Cap(Generic[K, T, U]):
     _about: Optional[str]
     _delimiter: Option[Optional[str]]
     _name: Optional[str]
+    _val_validator: ValidVal
     _version: Optional[str]
     _raw_err: bool
     _preset_helper_used: bool
@@ -373,6 +376,7 @@ class Cap(Generic[K, T, U]):
         use_anno_doc_as_about: bool = True,
         use_anno_cmt_params: bool = True,
         add_helper_help: bool = True,
+        extra_validator_units: Optional[Dict[str, ValidUnit]] = None,
     ) -> None:
         self._attributes = {}
         self._argstype = argstype
@@ -417,6 +421,10 @@ class Cap(Generic[K, T, U]):
                 )
 
         self._add_helper_help = add_helper_help
+
+        self._val_validator = ValidVal(deepcopy(PREDEFINED_UNITS))
+        if extra_validator_units is not None:
+            self._val_validator._registry.update(extra_validator_units)
 
     def _get_key(self, name: str) -> Union[NoReturn, str]:
         for key, opt in self._args.items():
@@ -592,7 +600,7 @@ class Cap(Generic[K, T, U]):
             for arg, val in value.items():  # type: ignore
                 try:
                     t = self._args[arg].type
-                    valid, _, _ = VALIDATOR.extract(t, val, cvt=False).unwrap()
+                    valid, _, _ = self._val_validator.extract(t, val, cvt=False).unwrap()
                     if valid:
                         self._args[arg].val = Option.Some(val)
                     else:
@@ -665,7 +673,7 @@ class Cap(Generic[K, T, U]):
         self._before_parse()
 
         if validator is None:
-            validator = VALIDATOR
+            validator = self._val_validator
 
         validator.delimiter = self._delimiter
         validator.attributes = self._attributes

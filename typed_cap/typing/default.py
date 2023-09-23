@@ -181,7 +181,7 @@ def _valid_enum(vv: ValidVal, t: EnumMeta, val: Any, _cvt: bool):
     return v
 
 
-PREDEFINED_VALIDATORS: Dict[str, Unit] = {
+PREDEFINED_UNITS: Dict[str, Unit] = {
     "bool": Unit(
         exact=bool,
         type_of=None,
@@ -250,7 +250,7 @@ if sys.version_info >= (3, 10):
                 return v_got
         return v
 
-    PREDEFINED_VALIDATORS.update(
+    PREDEFINED_UNITS.update(
         {
             "uniontype": Unit(
                 exact=None,
@@ -261,4 +261,4 @@ if sys.version_info >= (3, 10):
         }
     )
 
-VALIDATOR = ValidVal(PREDEFINED_VALIDATORS)
+VALIDATOR = ValidVal(PREDEFINED_UNITS)
