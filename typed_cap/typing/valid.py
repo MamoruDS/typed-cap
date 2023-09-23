@@ -6,11 +6,11 @@ from typing import (
     Callable,
     Dict,
     Generic,
+    NamedTuple,
     Optional,
     Tuple,
     Type,
     TypeVar,
-    TypedDict,
     Union,
     overload,
 )
@@ -82,29 +82,36 @@ class ValidRes(Generic[T]):
 ValidFunc = Callable[["ValidVal", Type[T], Any, bool], ValidRes[T]]
 
 
-# TODO: change this:
-class TypeInf(TypedDict):
-    t: Any
-    tt: Any
-    c: Any
-    v: ValidFunc
+class Unit(NamedTuple):
+    exact: Optional[Type]
+    """the exact type that the target is expected to match"""
+
+    type_of: Optional[Type]
+    """the type that the target is expected to be an instance of"""
+
+    class_of: Optional[Type]
+    """the base or superclass type that the target is expected to be an instance of"""
+
+    valid_fn: ValidFunc
+    """the function that will be called to validate the target"""
 
 
 class ValidVal:
     attributes: Dict[str, Any]
-    _validators: Dict[str, TypeInf]
+    _validators: Dict[str, Unit]
     _delimiter: Option[Optional[str]]
 
     # temp only
     _temp_delimiter: Option[Optional[str]]
 
-    def __init__(self, validators: Dict[str, TypeInf]) -> None:
+    def __init__(self, validators: Dict[str, Unit]) -> None:
         self.attributes = {}
         self._validators = validators
         self._delimiter = Option[Optional[str]].Some(",")
         self._temp_delimiter = Option.NONE()
 
-    def _class_of(self, obj: Any) -> Optional[Any]:
+    @staticmethod
+    def _class_of(obj: Any) -> Optional[Any]:
         try:
             return obj.__class__
         except AttributeError:
@@ -113,7 +120,7 @@ class ValidVal:
             raise e
 
     @property
-    def validators(self) -> Dict[str, TypeInf]:
+    def validators(self) -> Dict[str, Unit]:
         return self._validators
 
     @property
@@ -165,15 +172,15 @@ class ValidVal:
         res: Optional[ValidRes[T]] = None
         if isinstance(t, str):
             if REG.get(t) is not None:
-                res = REG[t]["v"](self, REG[t]["t"], val, cvt)
+                res = REG[t].valid_fn(self, REG[t].exact, val, cvt)
         else:
             for _, t_inf in REG.items():
                 if (
-                    t == t_inf["t"]
-                    or type(t) == t_inf["tt"]
-                    or self._class_of(t) == t_inf["c"]
+                    t == t_inf.exact
+                    or type(t) == t_inf.type_of
+                    or self._class_of(t) == t_inf.class_of
                 ):
-                    res = t_inf["v"](self, t, val, cvt)
+                    res = t_inf.valid_fn(self, t, val, cvt)
                 else:
                     continue
 

@@ -3,6 +3,7 @@ from enum import EnumMeta, Enum
 from types import GenericAlias
 from typing import (
     Any,
+    Dict,
     List,
     Tuple,
     Union,
@@ -10,7 +11,7 @@ from typing import (
     get_origin,
 )
 
-from .valid import ValidVal, ValidRes
+from .valid import ValidVal, ValidRes, Unit
 from .types import LiteralTType, NoneType, QueueTType, UnionTType
 
 
@@ -180,65 +181,62 @@ def _valid_enum(vv: ValidVal, t: EnumMeta, val: Any, _cvt: bool):
     return v
 
 
-VALIDATOR = ValidVal(
-    {
-        "bool": {
-            "t": bool,
-            "tt": None,
-            "c": None,
-            "v": _valid_bool,
-        },
-        "int": {
-            "t": int,
-            "tt": None,
-            "c": None,
-            "v": _valid_int,
-        },
-        "float": {
-            "t": float,
-            "tt": None,
-            "c": None,
-            "v": _valid_float,
-        },
-        "str": {
-            "t": str,
-            "tt": None,
-            "c": None,
-            "v": _valid_str,
-        },
-        "none": {
-            "t": NoneType,
-            "tt": None,
-            "c": NoneType,
-            "v": _valid_none,
-        },
-        "union": {
-            "t": None,
-            "tt": None,
-            "c": UnionTType,
-            "v": _valid_union,
-        },
-        "queue": {
-            "t": QueueTType,
-            "tt": GenericAlias,
-            "c": QueueTType,
-            "v": _valid_queue,
-        },
-        "literal": {
-            "t": LiteralTType,
-            "tt": None,
-            "c": LiteralTType,
-            "v": _valid_literal,
-        },
-        "enum": {
-            "t": None,
-            "tt": EnumMeta,
-            "c": EnumMeta,
-            "v": _valid_enum,
-        },
-    }
-)
-
+PREDEFINED_VALIDATORS: Dict[str, Unit] = {
+    "bool": Unit(
+        exact=bool,
+        type_of=None,
+        class_of=None,
+        valid_fn=_valid_bool,
+    ),
+    "int": Unit(
+        exact=int,
+        type_of=None,
+        class_of=None,
+        valid_fn=_valid_int,
+    ),
+    "float": Unit(
+        exact=float,
+        type_of=None,
+        class_of=None,
+        valid_fn=_valid_float,
+    ),
+    "str": Unit(
+        exact=str,
+        type_of=None,
+        class_of=None,
+        valid_fn=_valid_str,
+    ),
+    "none": Unit(
+        exact=NoneType,
+        type_of=None,
+        class_of=NoneType,
+        valid_fn=_valid_none,
+    ),
+    "union": Unit(
+        exact=None,
+        type_of=None,
+        class_of=UnionTType,
+        valid_fn=_valid_union,
+    ),
+    "queue": Unit(
+        exact=QueueTType,
+        type_of=GenericAlias,
+        class_of=QueueTType,
+        valid_fn=_valid_queue,
+    ),
+    "literal": Unit(
+        exact=LiteralTType,
+        type_of=None,
+        class_of=LiteralTType,
+        valid_fn=_valid_literal,
+    ),
+    "enum": Unit(
+        exact=None,
+        type_of=EnumMeta,
+        class_of=EnumMeta,
+        valid_fn=_valid_enum,
+    ),
+}
 
 if sys.version_info >= (3, 10):
     from types import UnionType
@@ -252,13 +250,15 @@ if sys.version_info >= (3, 10):
                 return v_got
         return v
 
-    VALIDATOR.validators.update(
+    PREDEFINED_VALIDATORS.update(
         {
-            "uniontype": {
-                "t": None,
-                "tt": None,
-                "c": UnionType,
-                "v": _valid_uniontype,
-            }
+            "uniontype": Unit(
+                exact=None,
+                type_of=None,
+                class_of=UnionType,
+                valid_fn=_valid_uniontype,
+            ),
         }
     )
+
+VALIDATOR = ValidVal(PREDEFINED_VALIDATORS)
