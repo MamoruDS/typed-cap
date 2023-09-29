@@ -742,13 +742,17 @@ class Cap(Generic[K, T, U]):
                 temp_delimiter = opt.local_delimiter
 
                 try:
-                    valid, v_got, err = validator.extract(
+                    res = validator.extract(
                         t,
                         v,
                         cvt=True,
                         temp_delimiter=temp_delimiter,
                         leave_scope=True,
-                    ).unwrap()
+                    )
+                    if not res.is_valid():
+                        # TODO: err handling
+                        raise res._error.unwrap()
+                    valid, v_got, err = res.unwrap()
                 except ValidatorNotFound as err:
                     self._panic(
                         f"validator for type {colorize_text_t_type(err.type)} not found",
