@@ -68,7 +68,7 @@ from .utils.code import (
     get_annotations,
     get_docs_from_annotations,
 )
-from .utils.color import Colors, fg
+from .utils.color import BasicColors, fg
 from .utils.option import Option
 
 
@@ -333,16 +333,16 @@ def colorize_text_t_type(t: Type) -> str:
         tn: str = t.__name__
     except AttributeError:
         tn = str(t)
-    return str(fg(tn, Colors.Blue))
+    return str(fg(tn, BasicColors.Blue))
 
 
 def colorize_text_t_option_name(key: str) -> str:
-    return str(fg(key, Colors.Yellow))
+    return str(fg(key, BasicColors.Yellow))
 
 
 def colorize_text_t_value(val: Any) -> str:
     try:
-        return str(fg(val, Colors.Red))
+        return str(fg(val, BasicColors.Red))
     except Exception as err:
         print(err)
         return "[...]"
