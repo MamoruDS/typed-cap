@@ -82,6 +82,8 @@ class _ParsedVal(TypedDict):
 
 
 T = TypeVar("T", bound=Union[TypedDict, object])
+U = TypeVar("U", bound=Union[TypedDict, Dict[str, Any]])
+K = TypeVar("K", bound=str)
 
 
 class _GVCS(Generic[T]):
@@ -180,9 +182,6 @@ class Parsed(Generic[T]):
     def toJSON(self, indent: Optional[int] = None) -> str:
         return self.__json__(indent=indent)
 
-
-U = TypeVar("U", bound=Union[TypedDict, Dict[str, Any]])
-K = TypeVar("K", bound=str)
 
 CAP_ERR = Union[
     ArgsParserKeyError,
@@ -600,7 +599,9 @@ class Cap(Generic[K, T, U]):
             for arg, val in value.items():  # type: ignore
                 try:
                     t = self._args[arg].type
-                    valid, _, _ = self._val_validator.extract(t, val, cvt=False).unwrap()
+                    valid, _, _ = self._val_validator.extract(
+                        t, val, cvt=False
+                    ).unwrap()
                     if valid:
                         self._args[arg].val = Option.Some(val)
                     else:
