@@ -5,6 +5,17 @@ from typing import TypedDict
 CFG.cur = "dict-based"
 
 
+def test_unpack():
+    class T(TypedDict):
+        verbose: bool
+
+    cap = Cap(T)
+    parsed = cap.parse(cmd("--verbose foo"))
+    argv, args = parsed.unpack()
+    assert isinstance(argv, list)
+    assert isinstance(args, dict)
+
+
 def test_default_dict_based():
     class T(TypedDict):
         silent: bool
