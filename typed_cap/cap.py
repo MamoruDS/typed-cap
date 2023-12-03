@@ -1,6 +1,5 @@
 from __future__ import annotations
 import inspect
-import json
 import sys
 from copy import deepcopy
 from typing import (
@@ -172,15 +171,6 @@ class Parsed(Generic[T]):
             return len(parsed["val"])
         else:
             panic(f'Parsed.count: cannot find option with name "{name}"')
-
-    def __json__(self, indent: Optional[int]) -> str:
-        j = {}
-        j["arguments"] = self.arguments
-        j["value"] = self.value
-        return json.dumps(j, indent=indent)
-
-    def toJSON(self, indent: Optional[int] = None) -> str:
-        return self.__json__(indent=indent)
 
 
 CAP_ERR = Union[
