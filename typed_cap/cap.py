@@ -165,6 +165,9 @@ class Parsed(Generic[T]):
         """deprecated; use `args` instead"""
         return self.value
 
+    def unpack(self) -> Tuple[List[str], T]:
+        return self.argv, self.args
+
     def count(self, name: str) -> int:
         parsed = self._parsed_map.get(name)
         if parsed is not None:
