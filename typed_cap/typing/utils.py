@@ -99,8 +99,11 @@ def get_queue_type(t: Type, allow_optional: bool = False) -> ParsedQueueType:
     ot = get_origin(t)
     if ot in [tuple, list]:
         return ParsedQueueType(ot.__name__)
-    elif ot == Union and allow_optional:
-        can = get_optional_candidates(t)
+    elif allow_optional:
+        try:
+            can = get_optional_candidates(t)
+        except TypeError:
+            can = None
         if can is not None and len(can) == 1:
             _t = can[0]
             return get_queue_type(_t)
