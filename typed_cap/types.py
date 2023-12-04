@@ -120,8 +120,8 @@ class ArgsParserOptions(TypedDict, total=False):
     disable_hyphen_conversion: bool
 
 
-class ArgsParserResults(TypedDict):
-    args: List[str]
+class ArgsParserResults(NamedTuple):
+    argv: List[str]
     options: Dict[str, List[Union[str, bool]]]
 
 

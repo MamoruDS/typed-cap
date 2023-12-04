@@ -4,6 +4,17 @@ from typed_cap import Cap
 CFG.cur = "object-based"
 
 
+def test_unpack():
+    class T:
+        verbose: bool
+
+    cap = Cap(T)
+    parsed = cap.parse(cmd("--verbose foo"))
+    argv, args = parsed.unpack()
+    assert isinstance(argv, list)
+    assert isinstance(args, T)
+
+
 def test_default_obj_based():
     class T:
         silent: bool = False

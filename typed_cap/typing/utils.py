@@ -30,6 +30,12 @@ class BasedType(Enum):
     UNKNOWN = auto()
 
 
+class ParsedQueueType(Enum):
+    NONE = 0
+    LIST = "list"
+    TUPLE = "tuple"
+
+
 # FIXME: potential issues
 def get_based(x) -> BasedType:
     if not inspect.isclass(x):
@@ -58,18 +64,22 @@ def get_type_candidates(t: Type[T]) -> Tuple[Type[T]]:
     >>> get_type_candidates(Optional[int])
     (<class 'int'>, <class 'NoneType'>)
     """
-    uniontypes = [UnionTType]
 
-    if sys.version_info >= (3, 10):
-        from types import UnionType
+    def _is_uniontype(t: Type) -> bool:
+        uniontypes = [Union, UnionTType]
 
-        uniontypes.append(UnionType)
+        if sys.version_info >= (3, 10):
+            from types import UnionType
 
-    if t.__class__ in uniontypes:
+            uniontypes.append(UnionType)
+
+        return t.__class__ in uniontypes or t in uniontypes
+
+    if _is_uniontype(t):
         can = get_args(t)
         return can  # type: ignore
     else:
-        raise Exception()  # TODO:
+        raise TypeError()  # TODO:
 
 
 def get_optional_candidates(t: Type) -> Optional[Tuple]:
@@ -83,22 +93,23 @@ def get_optional_candidates(t: Type) -> Optional[Tuple]:
     return None
 
 
-def get_queue_type(
-    t: Type, allow_optional: bool = False
-) -> Optional[Literal["list", "tuple"]]:
+def get_queue_type(t: Type, allow_optional: bool = False) -> ParsedQueueType:
     if t in [tuple, list]:
-        return t.__name__
+        return ParsedQueueType(t.__name__)
     ot = get_origin(t)
     if ot in [tuple, list]:
-        return ot.__name__  # type: ignore
-    elif ot == Union and allow_optional:
-        can = get_optional_candidates(t)
+        return ParsedQueueType(ot.__name__)
+    elif allow_optional:
+        try:
+            can = get_optional_candidates(t)
+        except TypeError:
+            can = None
         if can is not None and len(can) == 1:
             _t = can[0]
             return get_queue_type(_t)
         else:
             ...
-    return None
+    return ParsedQueueType.NONE
 
 
 def argstyping_parse(t: Type[T]) -> Dict[str, Type[T]]:

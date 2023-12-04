@@ -1,7 +1,7 @@
 from __future__ import annotations
 import inspect
-import json
 import sys
+from copy import deepcopy
 from typing import (
     Any,
     Callable,
@@ -45,7 +45,9 @@ from .types import (
 )
 from .typing import (
     BasedType,
+    ParsedQueueType,
     ValidatorNotFound,
+    ValidUnit,
     ValidVal,
     get_based,
     get_optional_candidates,
@@ -53,7 +55,7 @@ from .typing import (
     get_type_candidates,
     argstyping_parse,
 )
-from .typing.default import VALIDATOR
+from .typing.default import PREDEFINED_UNITS
 from .utils import (
     flatten,
     get_terminal_width,
@@ -66,7 +68,7 @@ from .utils.code import (
     get_annotations,
     get_docs_from_annotations,
 )
-from .utils.color import Colors, fg
+from .utils.color import BasicColors, fg
 from .utils.option import Option
 
 
@@ -76,10 +78,12 @@ ArgCallback = Callable[["Cap", List[List]], Union[NoReturn, List[List]]]
 class _ParsedVal(TypedDict):
     val: List[List[Any]]
     default_val: Option
-    queue_type: Optional[Literal["list", "tuple"]]
+    queue_type: ParsedQueueType
 
 
 T = TypeVar("T", bound=Union[TypedDict, object])
+U = TypeVar("U", bound=Union[TypedDict, Dict[str, Any]])
+K = TypeVar("K", bound=str)
 
 
 class _GVCS(Generic[T]):
@@ -144,9 +148,9 @@ class Parsed(Generic[T]):
             pv = flatten(pv)
             if len(pv) == 0:
                 gvc.setVal(key, parsed["default_val"].unwrap())
-            elif parsed["queue_type"] == "list":
+            elif parsed["queue_type"] is ParsedQueueType.LIST:
                 gvc.setVal(key, flatten(pv))
-            elif parsed["queue_type"] == "tuple":
+            elif parsed["queue_type"] is ParsedQueueType.TUPLE:
                 gvc.setVal(key, pv[-1])
             else:
                 gvc.setVal(key, pv[-1])
@@ -162,6 +166,9 @@ class Parsed(Generic[T]):
         """deprecated; use `args` instead"""
         return self.value
 
+    def unpack(self) -> Tuple[List[str], T]:
+        return self.argv, self.args
+
     def count(self, name: str) -> int:
         parsed = self._parsed_map.get(name)
         if parsed is not None:
@@ -169,18 +176,6 @@ class Parsed(Generic[T]):
         else:
             panic(f'Parsed.count: cannot find option with name "{name}"')
 
-    def __json__(self, indent: Optional[int]) -> str:
-        j = {}
-        j["arguments"] = self.arguments
-        j["value"] = self.value
-        return json.dumps(j, indent=indent)
-
-    def toJSON(self, indent: Optional[int] = None) -> str:
-        return self.__json__(indent=indent)
-
-
-U = TypeVar("U", bound=Union[TypedDict, Dict[str, Any]])
-K = TypeVar("K", bound=str)
 
 CAP_ERR = Union[
     ArgsParserKeyError,
@@ -331,16 +326,16 @@ def colorize_text_t_type(t: Type) -> str:
         tn: str = t.__name__
     except AttributeError:
         tn = str(t)
-    return str(fg(tn, Colors.Blue))
+    return str(fg(tn, BasicColors.Blue))
 
 
 def colorize_text_t_option_name(key: str) -> str:
-    return str(fg(key, Colors.Yellow))
+    return str(fg(key, BasicColors.Yellow))
 
 
 def colorize_text_t_value(val: Any) -> str:
     try:
-        return str(fg(val, Colors.Red))
+        return str(fg(val, BasicColors.Red))
     except Exception as err:
         print(err)
         return "[...]"
@@ -354,6 +349,7 @@ class Cap(Generic[K, T, U]):
     _about: Optional[str]
     _delimiter: Option[Optional[str]]
     _name: Optional[str]
+    _val_validator: ValidVal
     _version: Optional[str]
     _raw_err: bool
     _preset_helper_used: bool
@@ -373,6 +369,7 @@ class Cap(Generic[K, T, U]):
         use_anno_doc_as_about: bool = True,
         use_anno_cmt_params: bool = True,
         add_helper_help: bool = True,
+        extra_validator_units: Optional[Dict[str, ValidUnit]] = None,
     ) -> None:
         self._attributes = {}
         self._argstype = argstype
@@ -417,6 +414,10 @@ class Cap(Generic[K, T, U]):
                 )
 
         self._add_helper_help = add_helper_help
+
+        self._val_validator = ValidVal(deepcopy(PREDEFINED_UNITS))
+        if extra_validator_units is not None:
+            self._val_validator._registry.update(extra_validator_units)
 
     def _get_key(self, name: str) -> Union[NoReturn, str]:
         for key, opt in self._args.items():
@@ -592,7 +593,9 @@ class Cap(Generic[K, T, U]):
             for arg, val in value.items():  # type: ignore
                 try:
                     t = self._args[arg].type
-                    valid, _, _ = VALIDATOR.extract(t, val, cvt=False).unwrap()
+                    valid, _, _ = self._val_validator.extract(
+                        t, val, cvt=False
+                    ).unwrap()
                     if valid:
                         self._args[arg].val = Option.Some(val)
                     else:
@@ -665,7 +668,7 @@ class Cap(Generic[K, T, U]):
         self._before_parse()
 
         if validator is None:
-            validator = VALIDATOR
+            validator = self._val_validator
 
         validator.delimiter = self._delimiter
         validator.attributes = self._attributes
@@ -715,14 +718,14 @@ class Cap(Generic[K, T, U]):
 
         parsed_map: Dict[str, _ParsedVal] = {}
         # extract process
-        for name, val in out["options"].items():
+        for name, val in out.options.items():
             key = self._get_key(name)
             parsed: _ParsedVal = parsed_map.get(
                 key,
                 {
                     "val": [],
                     "default_val": Option.NONE(),
-                    "queue_type": None,
+                    "queue_type": ParsedQueueType.NONE,
                 },
             )
             opt = self._args[key]  # TODO:
@@ -734,13 +737,17 @@ class Cap(Generic[K, T, U]):
                 temp_delimiter = opt.local_delimiter
 
                 try:
-                    valid, v_got, err = validator.extract(
+                    res = validator.extract(
                         t,
                         v,
                         cvt=True,
                         temp_delimiter=temp_delimiter,
                         leave_scope=True,
-                    ).unwrap()
+                    )
+                    if not res.is_valid():
+                        # TODO: err handling
+                        raise res._error.unwrap()
+                    valid, v_got, err = res.unwrap()
                 except ValidatorNotFound as err:
                     self._panic(
                         f"validator for type {colorize_text_t_type(err.type)} not found",
@@ -820,4 +827,4 @@ class Cap(Generic[K, T, U]):
                         else:
                             parsed_map[key]["default_val"] = Option.Some(None)
 
-        return Parsed(self._argstype, out["args"], parsed_map, args_obj)
+        return Parsed(self._argstype, out.argv, parsed_map, args_obj)
