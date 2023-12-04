@@ -64,18 +64,22 @@ def get_type_candidates(t: Type[T]) -> Tuple[Type[T]]:
     >>> get_type_candidates(Optional[int])
     (<class 'int'>, <class 'NoneType'>)
     """
-    uniontypes = [UnionTType]
 
-    if sys.version_info >= (3, 10):
-        from types import UnionType
+    def _is_uniontype(t: Type) -> bool:
+        uniontypes = [Union, UnionTType]
 
-        uniontypes.append(UnionType)
+        if sys.version_info >= (3, 10):
+            from types import UnionType
 
-    if t.__class__ in uniontypes:
+            uniontypes.append(UnionType)
+
+        return t.__class__ in uniontypes or t in uniontypes
+
+    if _is_uniontype(t):
         can = get_args(t)
         return can  # type: ignore
     else:
-        raise Exception()  # TODO:
+        raise TypeError()  # TODO:
 
 
 def get_optional_candidates(t: Type) -> Optional[Tuple]:
