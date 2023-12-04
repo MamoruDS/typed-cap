@@ -717,7 +717,7 @@ class Cap(Generic[K, T, U]):
 
         parsed_map: Dict[str, _ParsedVal] = {}
         # extract process
-        for name, val in out["options"].items():
+        for name, val in out.options.items():
             key = self._get_key(name)
             parsed: _ParsedVal = parsed_map.get(
                 key,
@@ -826,4 +826,4 @@ class Cap(Generic[K, T, U]):
                         else:
                             parsed_map[key]["default_val"] = Option.Some(None)
 
-        return Parsed(self._argstype, out["args"], parsed_map, args_obj)
+        return Parsed(self._argstype, out.argv, parsed_map, args_obj)

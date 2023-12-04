@@ -165,10 +165,9 @@ def args_parser(
             raise Exception(f"val of {k} is not a list")
         return v
 
-    parsed_args: ArgsParserResults = {
-        "args": parsed.pop("_"),
-        "options": dict(
+    return ArgsParserResults(
+        argv=parsed.pop("_"),
+        options=dict(
             map(lambda it: (it[0], _extract(it[0], it[1])), parsed.items())
         ),
-    }
-    return parsed_args
+    )
