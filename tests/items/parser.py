@@ -267,13 +267,15 @@ def test_arguments_B():
 @pytest.mark.skipif(
     sys.version_info < (3, 10), reason="requires Python 3.10 or higher"
 )
-def test_uniontypes():
+def test_uniontypes_queue_list():
     class T(B):
-        numbers: list[int] | None
+        foo: list[int] | None
+        bar: list[int] | None
 
     cap = Cap(T)
-    res = cap.parse(cmd("--numbers 5,6,10"))
-    assert G(res.args, "numbers") == [5, 6, 10]
+    res = cap.parse(cmd("--foo 5,6,10 --bar 1 --bar 2"))
+    assert G(res.args, "foo") == [5, 6, 10]
+    assert G(res.args, "bar") == [1, 2]
 
 
 def test_default_none_union():
