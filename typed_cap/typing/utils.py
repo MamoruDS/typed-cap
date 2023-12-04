@@ -30,6 +30,12 @@ class BasedType(Enum):
     UNKNOWN = auto()
 
 
+class ParsedQueueType(Enum):
+    NONE = 0
+    LIST = "list"
+    TUPLE = "tuple"
+
+
 # FIXME: potential issues
 def get_based(x) -> BasedType:
     if not inspect.isclass(x):
@@ -83,14 +89,12 @@ def get_optional_candidates(t: Type) -> Optional[Tuple]:
     return None
 
 
-def get_queue_type(
-    t: Type, allow_optional: bool = False
-) -> Optional[Literal["list", "tuple"]]:
+def get_queue_type(t: Type, allow_optional: bool = False) -> ParsedQueueType:
     if t in [tuple, list]:
-        return t.__name__
+        return ParsedQueueType(t.__name__)
     ot = get_origin(t)
     if ot in [tuple, list]:
-        return ot.__name__  # type: ignore
+        return ParsedQueueType(ot.__name__)
     elif ot == Union and allow_optional:
         can = get_optional_candidates(t)
         if can is not None and len(can) == 1:
@@ -98,7 +102,7 @@ def get_queue_type(
             return get_queue_type(_t)
         else:
             ...
-    return None
+    return ParsedQueueType.NONE
 
 
 def argstyping_parse(t: Type[T]) -> Dict[str, Type[T]]:

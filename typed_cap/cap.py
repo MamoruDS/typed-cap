@@ -45,6 +45,7 @@ from .types import (
 )
 from .typing import (
     BasedType,
+    ParsedQueueType,
     ValidatorNotFound,
     ValidUnit,
     ValidVal,
@@ -77,7 +78,7 @@ ArgCallback = Callable[["Cap", List[List]], Union[NoReturn, List[List]]]
 class _ParsedVal(TypedDict):
     val: List[List[Any]]
     default_val: Option
-    queue_type: Optional[Literal["list", "tuple"]]
+    queue_type: ParsedQueueType
 
 
 T = TypeVar("T", bound=Union[TypedDict, object])
@@ -147,9 +148,9 @@ class Parsed(Generic[T]):
             pv = flatten(pv)
             if len(pv) == 0:
                 gvc.setVal(key, parsed["default_val"].unwrap())
-            elif parsed["queue_type"] == "list":
+            elif parsed["queue_type"] is ParsedQueueType.LIST:
                 gvc.setVal(key, flatten(pv))
-            elif parsed["queue_type"] == "tuple":
+            elif parsed["queue_type"] is ParsedQueueType.TUPLE:
                 gvc.setVal(key, pv[-1])
             else:
                 gvc.setVal(key, pv[-1])
@@ -724,7 +725,7 @@ class Cap(Generic[K, T, U]):
                 {
                     "val": [],
                     "default_val": Option.NONE(),
-                    "queue_type": None,
+                    "queue_type": ParsedQueueType.NONE,
                 },
             )
             opt = self._args[key]  # TODO:
