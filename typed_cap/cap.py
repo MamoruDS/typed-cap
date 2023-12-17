@@ -465,9 +465,6 @@ class Cap(Generic[K, T, U]):
             self._args[name].cmt_params = cmt_params
 
     def _parse_argstype(self):
-        typed: Dict[str, Type]
-        extra: Optional[Dict[str, AnnoExtra]] = None
-
         typed, extra = argstyping_parse_extra(self._argstype)
 
         for key, t in typed.items():
